@@ -1,0 +1,122 @@
+---
+title : "Expectation of max"
+author : "Thimoté Dupuch"
+date : today
+format:
+  html:
+    embed-resources: true
+    theme: zephyr
+engine: julia
+---
+
+
+```{julia}
+#| echo : false
+#| output : false
+using Pkg
+Pkg.activate("..")
+Pkg.status()
+```
+
+```{julia}
+using CairoMakie, Random, Statistics, LinearAlgebra
+```
+
+  
+```{julia}
+#| output : false
+#| echo : false
+CairoMakie.set_theme!(theme_latexfonts())
+CairoMakie.activate!(type = "svg")
+```
+
+```{julia}
+#| output : false
+colors = Makie.wong_colors()
+blue, orange, red = colors[1], colors[2], colors[6]
+```
+
+```{julia}
+#| output : false
+true_function(x) = x.^2 .- 0.5
+```
+  
+```{julia}
+#| output : false
+function sample_data(n, std_noise, rng)
+    Xsample = rand(rng, n) .* 2 .- 1
+    Ysample = true_function(Xsample) .+ randn(rng, n) .* std_noise
+    return Xsample, Ysample
+end
+```
+
+```{julia}
+#| output : false
+function fit_polynomial(X, Y, degree)
+    # Build Vandermonde-style design matrix: columns x^0, x^1, ..., x^degree
+    Xdata = hcat([X .^ k for k in 0:degree]...)
+    w = Xdata \ Y
+    return w
+end
+```
+
+```{julia}
+#| output : false
+function predict(Xgrid, w)
+    degree = length(w) - 1
+    Xgriddata = hcat([Xgrid .^ k for k in 0:degree]...)
+    return Xgriddata * w
+end
+```
+```{julia}
+#| output : false
+function train_mse(X, Y, w)
+    degree = length(w) - 1
+    Xdata = hcat([X .^ k for k in 0:degree]...)
+    residuals = Xdata * w .- Y
+    return mean(residuals .^ 2)
+end
+```
+
+```{julia}
+function plot_polynomial_regression(; seed=1, n=20, std_noise=0.25, kmax=14)
+    rng = MersenneTwister(seed)
+
+    Xgrid = collect(-1:0.001:1)
+    Ygrid = true_function(Xgrid)
+
+    Xsample, Ysample = sample_data(n, std_noise, rng)
+
+    nplots = kmax + 1
+    ncols = 5
+    nrows = ceil(Int, nplots / ncols)
+
+    fig = Figure(size=(ncols * 300, nrows * 300))
+
+    for k in 0:kmax
+        row = div(k, ncols) + 1
+        col = mod(k, ncols) + 1
+        ax = Axis(fig[row, col],
+            limits=((-1, 1), (-1, 1.1))
+        )
+
+        w = fit_polynomial(Xsample, Ysample, k)
+        Ygrid_pred = predict(Xgrid, w)
+
+        train_err = train_mse(Xsample, Ysample, w)
+        test_err  = std_noise^2 + mean((Ygrid_pred .- Ygrid) .^ 2)
+
+        ax.title =
+          "train=$(round(train_err, digits=2)), test=$(round(test_err, digits=2))"
+
+        lines!(ax, Xgrid, Ygrid_pred, color=red,  linewidth=2, label = L"k=%$k")
+        lines!(ax, Xgrid, Ygrid,      color=blue, linewidth=2)
+        scatter!(ax, Xsample, Ysample, color=:black, marker=:xcross, markersize=10)
+        axislegend(ax, position=:rt)
+    end
+
+    return fig
+end
+
+plot_polynomial_regression()
+```
