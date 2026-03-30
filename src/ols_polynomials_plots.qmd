@@ -1,0 +1,191 @@
+---
+title : "Polynomial regression in one dimension with a varying number of observations"
+author : "Thimoté Dupuch"
+date : today
+format:
+  html:
+    embed-resources: true
+    theme: zephyr
+engine: julia
+---
+
+```{julia}
+#| echo : false
+#| output : false
+using Pkg
+Pkg.activate("..")
+```
+
+
+```{julia}
+using CairoMakie
+using Random
+using Statistics
+```
+
+
+```{julia}
+#| output : false
+#| echo : false
+CairoMakie.set_theme!(theme_latexfonts())
+CairoMakie.activate!(type = "svg")
+```
+
+```{julia}
+#| output : false
+colors = Makie.wong_colors()
+blue, orange, red = colors[1], colors[2], colors[6]
+```
+
+
+```{julia}
+#| output : false
+true_fn(x) =  x .^ 2 .- 0.5
+```
+
+
+```{julia}
+#| output : false
+function sample_data(n, std_noise, rng)
+    X = rand(rng, n) .* 2 .- 1
+    Y = true_fn(X) .+ randn(rng, n) .* std_noise
+    return X, Y
+end
+```
+```{julia}
+#| output : false
+function fit_polynomial(X, Y, degree)
+    Φ = reduce(hcat, [X .^ k for k in 0:degree])
+    return (Φ' * Φ) \ (Φ' * Y)
+end
+```
+```{julia}
+#| output : false
+function predict(X, w)
+    Φ = reduce(hcat, [X .^ k for k in 0:(length(w)-1)])
+    return Φ * w
+end
+```
+
+```{julia}
+#| output : false
+function plot_polynomial_regression(; seed=1, std_noise=0.25, kmax=5)
+    rng = MersenneTwister(seed)
+
+    ns    = round.(Int, 10 .^ (1:0.25:3))
+    Xgrid = collect(-1:0.001:1)
+    Ygrid = true_fn(Xgrid)
+
+    fig = Figure(size=(1000, 1000))
+
+    for (idx, n) in enumerate(ns)
+        row, col = fldmod1(idx, 3)
+        ax = Axis(fig[row, col], limits=((-1, 1), (-1, 1.1)), xlabel=L"x", ylabel=L"y")
+
+        Xsample, Ysample = sample_data(n, std_noise, rng)
+
+        for degree in 0:kmax
+            w    = fit_polynomial(Xsample, Ysample, degree)
+            Ypred = predict(Xgrid, w)
+            if degree == kmax
+                lines!(ax, Xgrid, Ypred, color=red, linewidth=3)
+                train_err = mean((predict(Xsample, w) .- Ysample) .^ 2)
+                test_err  = std_noise^2 + mean((Ypred .- Ygrid) .^ 2)
+                ax.title = "n=$n  train=$(round(train_err, digits=2))  test=$(round(test_err, digits=2))"
+            end
+        end
+
+        lines!(ax, Xgrid, Ygrid, color=blue, linewidth=3)
+        scatter!(ax, Xsample, Ysample, color=:black, marker=:xcross, markersize=6)
+    end
+
+    return fig
+end
+```
+```{julia}
+fig = plot_polynomial_regression()
+```
+
+## Convergence rate for polynomial regression
+
+
+```{julia}
+#| output : false
+"""
+Run `nrep` repetitions across all `ns` and `degrees`, returning
+  - `insample_err[rep, n_idx]`  — fixed-design excess risk (vs noiseless truth)
+  - `test_err[rep, n_idx]`      — random-design test MSE (includes σ²)
+both evaluated at the *final* degree (kmax).
+"""
+function collect_errors(ns, kmax, std_noise, nrep, rng, Xgrid, Ygrid)
+    insample_err = zeros(nrep, length(ns))
+    test_err     = zeros(nrep, length(ns))
+ 
+    for irep in 1:nrep, (in_, n) in enumerate(ns)
+        Xsample, Ysample = sample_data(n, std_noise, rng)
+        w     = fit_polynomial(Xsample, Ysample, kmax)
+        Ypred = predict(Xgrid, w)
+ 
+        insample_err[irep, in_] = mean((predict(Xsample, w) .- true_fn(Xsample)) .^ 2)
+        test_err[irep, in_]     = std_noise^2 + mean((Ypred .- Ygrid) .^ 2)
+    end
+ 
+    return insample_err, test_err
+end
+```
+ 
+```{julia}
+#| output : false
+function errorbar_loglog!(ax, log_ns, values; label)
+    μ      = mean(values, dims=1)[:]
+    σ      = std(values,  dims=1)[:]
+    log_μ  = log10.(μ)
+    lo     = log_μ .- log10.(max.(μ .- σ, 1e-12))
+    hi     = log10.(μ .+ σ) .- log_μ
+ 
+    errorbars!(ax, log_ns, log_μ, lo, hi, whiskerwidth=6)
+    lines!(ax, log_ns, log_μ, label=label, linewidth=2)
+end
+```
+
+```{julia}
+#| output : false
+function plot_excess_risk(; seed=1, std_noise=0.25, kmax=5, nrep=32)
+    rng   = MersenneTwister(seed)
+    ns    = round.(Int, 10 .^ (1:0.25:5))
+    Xgrid = collect(-1:0.001:1)
+    Ygrid = true_fn(Xgrid)
+ 
+    insample_err, test_err = collect_errors(ns, kmax, std_noise, nrep, rng, Xgrid, Ygrid)
+ 
+    log_ns      = log10.(ns)
+    theory_line = log10.(std_noise^2 * (kmax + 1) ./ ns)
+ 
+    fig = Figure(size=(700, 350))
+ 
+    for (col, (values, excess_fn, title)) in enumerate([
+        (insample_err, identity,              "Fixed design"),
+        (test_err,     x -> x .- std_noise^2, "Random design"),
+    ])
+        ax = Axis(fig[1, col];
+            title  = title,
+            xlabel = L"\log_{10} (n)",
+            ylabel = L"\log_{10} \text{(excess risk)}",
+            limits = ((1, 5), (-6, 4)),
+        )
+ 
+        adjusted = excess_fn(values)
+        errorbar_loglog!(ax, log_ns, adjusted; label="Excess risk")
+        lines!(ax, log_ns, theory_line, color=red, linewidth=2, label=L"\sigma^2 d/n")
+        axislegend(ax)
+    end
+ 
+    return fig
+end
+```
+
+
+  
+```{julia}
+fig = plot_excess_risk()
+```

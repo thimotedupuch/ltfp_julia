@@ -1,5 +1,5 @@
 ---
-title : "Expectation of max"
+title : "Polynomial regression with increasing orders"
 author : "Thimoté Dupuch"
 date : today
 format:
