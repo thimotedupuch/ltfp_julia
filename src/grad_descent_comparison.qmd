@@ -1,0 +1,145 @@
+---
+title : "Gradient descent comparison"
+author : "Thimoté Dupuch"
+date : today
+format:
+  html:
+    embed-resources: true
+    theme: zephyr
+engine: julia
+---
+
+```{julia}
+#| echo : false
+#| output : false
+using Pkg
+Pkg.activate("..")
+```
+
+
+```{julia}
+#| output : false
+using LinearAlgebra, Random, Statistics, CairoMakie
+```
+
+
+```{julia}
+#| output : false
+#| echo : false
+CairoMakie.set_theme!(theme_latexfonts())
+CairoMakie.activate!(type = "svg")
+```
+
+```{julia}
+#| output : false
+colors = Makie.wong_colors()
+blue, orange, green, red = colors[1], colors[2], colors[3], colors[6]
+```
+
+
+```{julia}
+#| output : false
+
+using LinearAlgebra
+using Random
+using CairoMakie
+```
+
+
+##### Build quadratic problem
+```{julia}
+#| output : false
+function build_problem(d, spectrum_fn)
+    Hrand = randn(d, d)
+    U, _, _ = svd(Hrand)
+
+    λ = spectrum_fn(1:d)
+    H = U * Diagonal(λ) * U'
+
+    # Largest eigenvalue (since λ is known)
+    L = maximum(λ)
+
+    # Ground truth
+    wstar = U * randn(d)
+    wstar /= sqrt(wstar' * H * wstar)
+
+    return H, wstar, L
+end
+```
+##### Gradient descent
+```{julia}
+#| output : false
+function run_gd(H, wstar, L, maxiter)
+    d = length(wstar)
+    w = zeros(d)
+    F = zeros(maxiter)
+
+    for t in 1:maxiter
+        diff = w - wstar
+        F[t] = 0.5 * dot(diff, H * diff)
+        w -= (1 / L) * (H * diff)
+    end
+
+    return F
+end
+```
+
+```{julia}
+#| output : false
+function plot_gd_comparison()
+    Random.seed!(1)
+
+    d = 1000
+    maxiter = 5000
+
+    # Two spectra
+    H1, wstar1, L1 = build_problem(d, k -> 1.0 ./ k)
+    H2, wstar2, L2 = build_problem(d, k -> 1.0 ./ (k .^ 2))
+
+    Fw  = run_gd(H1, wstar1, L1, maxiter)
+    Fw2 = run_gd(H2, wstar2, L2, maxiter)
+
+    t = 0:maxiter-1
+
+    # Theoretical bound (avoid division by zero at t=0)
+    bound = similar(Fw)
+    bound[1] = NaN
+    bound[2:end] .= (1/8) * sum(wstar2 .^ 2) ./ t[2:end]
+
+    fig = Figure(size=(600, 300))
+
+    ax1 = Axis(fig[1, 1],
+        xlabel = L"t",
+        ylabel = L"\log_{10}[ F(\theta_t) - F(\eta_\ast) ]",
+        title = "Semilogarithmic scale",
+        limits = (0, 5000, -6, 0),
+        xticks = 0:2_000:6_000,
+        yticks = -6:2:0
+    )
+
+    lines!(ax1, t, log10.(Fw), label = L"\lambda_k \sim 1/k")
+    lines!(ax1, t, log10.(Fw2), label = L"\lambda_k \sim 1/k^2", color=red)
+    lines!(ax1, t, log10.(bound), label = "Bound", linestyle=:dash, color=:black)
+    axislegend(ax1, position =:lb)
+
+    ax2 = Axis(fig[1, 2],
+        xlabel = L"\log_{10}(t)",
+        ylabel = L"\log_{10}[F(\theta_t) - F(\theta_\ast)]",
+        title = "Full logarithmic scale",
+        limits = (0, log10(5000), -6, 0),
+        yticks = -6:2:0
+    )
+
+    lines!(ax2, log10.(t), log10.(Fw),label = L"\lambda_k \sim 1/k")
+    lines!(ax2, log10.(t), log10.(Fw2),label = L"\lambda_k \sim 1/k^2", color=red)
+    lines!(ax2, log10.(t), log10.(bound),label = "Bound", linestyle=:dash, color=:black)
+    axislegend(ax2, position =:lb)
+
+    fig
+end
+```
+
+
+```{julia}
+plot_gd_comparison()
+```
