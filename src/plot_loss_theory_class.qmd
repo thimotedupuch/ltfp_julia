@@ -1,0 +1,67 @@
+---
+title : "Classical convex surrogates"
+author : "Thimoté Dupuch"
+date : today
+format:
+  html:
+    embed-resources: true
+    theme: zephyr
+engine: julia
+---
+
+```{julia}
+#| echo : false
+#| output : false
+using Pkg
+Pkg.activate("..")
+```
+
+
+```{julia}
+#| output : false
+using CairoMakie
+```
+
+
+```{julia}
+#| output : false
+#| echo : false
+CairoMakie.set_theme!(theme_latexfonts())
+CairoMakie.activate!(type = "svg")
+```
+
+
+
+```{julia}
+#| output : false
+zero_one(u) = -0.5 * sign.(u) .+ 0.5
+hinge(u)    = max.(1 .- u, 0)
+square(u)   = (u .- 1) .^ 2
+logistic(u) = log.(1 .+ exp.(-u))
+```
+
+```{julia}
+#| output : false
+function plot_losses()
+    u = -3:0.01:4
+
+    fig = Figure(size=(500, 400))
+    ax = Axis(fig[1, 1],
+        title = "Classical convex surrogates for binary classification",
+        limits = (-3, 4, 0, 4)
+    )
+
+    lines!(ax, u, zero_one(u), label=L"0-1 \ \text{loss} : \Phi_{0-1}(u)")
+    lines!(ax, u, hinge(u), label=L"\text{Hinge} : \max \{1-u, 0\}")
+    lines!(ax, u, square(u), label=L"\text{Square} : (1-u)^2")
+    lines!(ax, u, logistic(u), label=L"\text{Logistic} : \log(1+e^{-u})")
+
+    axislegend(ax)
+
+    fig
+end
+```
+
+```{julia}
+plot_losses()
+```
