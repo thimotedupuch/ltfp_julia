@@ -1,0 +1,191 @@
+---
+title : "Polynomial regression - bias/variance trade-offs for ridge regression"
+author : "Thimoté Dupuch"
+date : today
+format:
+  html:
+    embed-resources: true
+    theme: zephyr
+engine: julia
+---
+
+```{julia}
+#| echo : false
+#| output : false
+using Pkg
+Pkg.activate("..")
+```
+
+
+```{julia}
+#| output : false
+using LinearAlgebra, Random, Statistics, CairoMakie
+```
+
+
+```{julia}
+#| output : false
+#| echo : false
+CairoMakie.set_theme!(theme_latexfonts())
+CairoMakie.activate!(type = "svg")
+```
+
+```{julia}
+#| output : false
+colors = Makie.wong_colors()
+blue, orange, green, red = colors[1], colors[2], colors[3], colors[6]
+```
+
+
+```{julia}
+#| output : false
+function generate_grid(std_noise)
+    Xgrid = collect(-1:0.001:1)
+    Ygrid = Xgrid .^ 2 .- 0.5
+    Ygrid_noise = Ygrid .+ randn(length(Xgrid)) .* std_noise
+    return Xgrid, Ygrid, Ygrid_noise
+end
+```
+
+```{julia}
+#| output : false
+function generate_sample(n, std_noise)
+    X = rand(n) .* 2 .- 1
+    Y = X .^ 2 .- 0.5 .+ randn(n) .* std_noise
+    return X, Y
+end
+```
+
+```{julia}
+#| output : false
+function design_matrix(x, kmax)
+    n = length(x)
+    X = ones(n, kmax + 1)
+    for i in 1:kmax
+        X[:, i+1] .= x .^ i
+    end
+    return X
+end
+```
+    
+```{julia}
+#| output : false
+function ridge_solution(X, y, λ)
+    n = size(X, 1)
+    d = size(X, 2)
+    return (X' * X + n * λ * I(d)) \ (X' * y)
+end
+```
+
+
+
+```{julia}
+#| output : false
+function compute_excess_error(Xgrid, Ygrid, n, lambdas, kmax, std_noise, nrep)
+    errors = zeros(nrep, length(lambdas))
+
+    Xgriddata = design_matrix(Xgrid, kmax)
+
+    for irep in 1:nrep
+        Xsample, Ysample = generate_sample(n, std_noise)
+        Xdata = design_matrix(Xsample, kmax)
+
+        for (j, λ) in enumerate(lambdas)
+            w = ridge_solution(Xdata, Ysample, λ)
+            Ypred = Xgriddata * w
+            errors[irep, j] = mean((Ypred .- Ygrid).^2)
+        end
+    end
+
+    return errors
+end
+```
+
+
+```{julia}
+#| output : false
+function compute_bias_variance(Xdata, Xgriddata, Ygrid, lambdas, std_noise, n)
+    Σ = (Xdata' * Xdata) / n
+    d = size(Xdata, 2)
+
+    # optimal weights (no regularization)
+    wast = (Xgriddata' * Xgriddata) \ (Xgriddata' * Ygrid)
+
+    bias = zeros(length(lambdas))
+    variance = zeros(length(lambdas))
+
+    for (i, λ) in enumerate(lambdas)
+        A = inv(Σ + λ * I(d))
+
+        bias[i] = λ^2 * wast' * (Σ * A^2) * wast
+        variance[i] = std_noise^2 / n * tr(Σ^2 * A^2)
+    end
+
+    return bias, variance
+end
+```
+
+```{julia}
+#| output : false
+function plot()
+    Random.seed!(1)
+
+    std_noise = 1.0
+    n = 300
+    nrep = 32
+    kmax = 5
+
+    lambdas = 10 .^ (-6:0.25:2)
+
+    # Grid
+    Xgrid, Ygrid, _ = generate_grid(std_noise)
+    Xgriddata = design_matrix(Xgrid, kmax)
+
+    # Monte Carlo error
+    errors = compute_excess_error(Xgrid, Ygrid, n, lambdas, kmax, std_noise, nrep)
+
+    # One sample for bias/variance estimation
+    Xsample, Ysample = generate_sample(n, std_noise)
+    Xdata = design_matrix(Xsample, kmax)
+
+    bias, variance = compute_bias_variance(
+        Xdata, Xgriddata, Ygrid, lambdas, std_noise, n
+    )
+
+    fig = Figure(size=(500,400))
+    ax = Axis(fig[1, 1],
+        title = "Polynomial regression (dim = 5) - Ridge",
+        xlabel = L"\log_{10}(\lambda)",
+        ylabel = L"\log_{10}(\text{excess risk})",
+        xticks = -6:2:2,
+        yticks = -3.5:0.5:-1,
+        limits = (-6, 2, -3.5, -0.5)
+    )
+
+    xvals = log10.(lambdas)
+    mean_err = mean(errors, dims=1)[:]
+    std_err = std(errors, dims=1)[:]
+
+    # error bars
+    errorbars!(
+        ax, xvals,
+        log10.(mean_err),
+        log10.(mean_err .+ std_err) .- log10.(mean_err),
+        whiskerwidth = 10,
+        label = "Estimated excess risk"
+    )
+
+    # curves
+    lines!(ax, xvals, log10.(bias), label = "Theoretical bias", color=green)
+    lines!(ax, xvals, log10.(variance), label = "Theoretical variance", color=:black)
+    lines!(ax, xvals, log10.(bias .+ variance), label = "Bias + Variance", color=red)
+
+    axislegend(ax, position=:lb)
+    fig
+end
+```
+
+
+```{julia}
+plot()
+```
