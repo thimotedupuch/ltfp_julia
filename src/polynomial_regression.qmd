@@ -22,7 +22,7 @@ Pkg.status()
 using CairoMakie, Random, Statistics, LinearAlgebra
 ```
 
-  
+
 ```{julia}
 #| output : false
 #| echo : false
@@ -32,15 +32,14 @@ CairoMakie.activate!(type = "svg")
 
 ```{julia}
 #| output : false
-colors = Makie.wong_colors()
-blue, orange, red = colors[1], colors[2], colors[6]
+blue, orange, green, pink, teal, red, yellow = Makie.wong_colors()
 ```
 
 ```{julia}
 #| output : false
 true_function(x) = x.^2 .- 0.5
 ```
-  
+
 ```{julia}
 #| output : false
 function sample_data(n, std_noise, rng)
@@ -128,7 +127,7 @@ function fit_polynomial_regularized(X, Y, degree; lambda=1e-12)
     w = (Xdata'Xdata + n * lambda * I) \ (Xdata'Y)
     return w, Xdata
 end
- 
+
 function compute_errors(Xsample, Ysample, Xgrid, Ygrid, kmax, std_noise)
     train_errs = zeros(kmax + 1)
     test_errs  = zeros(kmax + 1)
@@ -139,40 +138,40 @@ function compute_errors(Xsample, Ysample, Xgrid, Ygrid, kmax, std_noise)
         train_errs[k+1] = mean((Xdata * w .- Ysample) .^ 2)
         test_errs[k+1]  = std_noise^2 + mean((Ygrid_pred .- Ygrid) .^ 2)
     end
- 
+
     return train_errs, test_errs
 end
- 
+
 function run_replications(; seed=1, n=20, std_noise=0.25, kmax=7, nrep=32)
     rng = MersenneTwister(seed)
- 
+
     Xgrid = collect(-1:0.001:1)
     Ygrid = true_function(Xgrid)
- 
+
     train_matrix = zeros(nrep, kmax + 1)
     test_matrix  = zeros(nrep, kmax + 1)
- 
+
     for irep in 1:nrep
         Xsample = rand(rng, n) .* 2 .- 1
         Ysample = true_function(Xsample) .+ randn(rng, n) .* std_noise
- 
+
         train_matrix[irep, :], test_matrix[irep, :] =
             compute_errors(Xsample, Ysample, Xgrid, Ygrid, kmax, std_noise)
     end
- 
+
     return train_matrix, test_matrix
 end
- 
+
 function plot_errors(; seed=1, n=20, std_noise=0.25, kmax=7, nrep=32)
     train_matrix, test_matrix = run_replications(;
         seed, n, std_noise, kmax, nrep)
- 
+
     ks           = 0:kmax
     mean_train   = mean(train_matrix, dims=1)[:]
     std_train    = std(train_matrix,  dims=1)[:]
     mean_test    = mean(test_matrix,  dims=1)[:]
     std_test     = std(test_matrix,   dims=1)[:]
- 
+
     fig = Figure(size=(600,400))
     ax  = Axis(fig[1, 1];
         xlabel = "Polynomial order k",
@@ -180,25 +179,25 @@ function plot_errors(; seed=1, n=20, std_noise=0.25, kmax=7, nrep=32)
         yticks = 0:0.2:1,
         limits = ((0, kmax), (0, 1)),
     )
- 
+
     # Error bands (±1 std)
     band!(ax, ks, mean_test  .- std_test,  mean_test  .+ std_test;  color=(red,  0.2))
     band!(ax, ks, mean_train .- std_train, mean_train .+ std_train; color=(blue, 0.2))
- 
+
     # Mean lines with markers
     scatterlines!(ax, ks, mean_train;
         color=blue, linewidth=2, marker=:xcross, markersize=14, label="Training")
     scatterlines!(ax, ks, mean_test;
         color=red, linewidth=2, marker=:xcross, markersize=14, label="Testing")
- 
+
     # Bayes error
     hlines!(ax, [std_noise^2];
         color=:black, linewidth=1, linestyle=:dash, label="Bayes error")
- 
+
     axislegend(ax, position=:lt)
- 
+
     return fig
 end
- 
+
 plot_errors()
 ```

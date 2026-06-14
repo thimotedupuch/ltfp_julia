@@ -29,8 +29,7 @@ CairoMakie.activate!(type = "svg")
 
 ```{julia}
 #| output : false
-colors = Makie.wong_colors()
-blue, orange, red = colors[1], colors[2], colors[6]
+blue, orange, green, pink, teal, red, yellow = Makie.wong_colors()
 ```
 
 ```{julia}
@@ -72,17 +71,17 @@ for (i, it) in enumerate(itertoplot)
     ax = Axis(fig[row, col], title="t = $it", limits=(-4, 4, -4, 4),
               xticklabelsvisible=false, yticklabelsvisible=false,
               xticksvisible=false, yticksvisible=false)
-    
+
     scatter!(ax, X[y .== 1, 1], X[y .== 1, 2], marker=:cross, color=blue, markersize=10)
     scatter!(ax, X[y .== -1, 1], X[y .== -1, 2], marker=:cross, color=red, markersize=10)
-    
+
     Xleft, Xright = -10.0, 10.0
-    
+
     # Boundary at current iter
     Yleft = -(ws[3, it] + Xleft * ws[1, it]) / ws[2, it]
     Yright = -(ws[3, it] + Xright * ws[1, it]) / ws[2, it]
     lines!(ax, [Xleft, Xright], [Yleft, Yright], color=:black, linewidth=2)
-    
+
     # Boundary at end
     Yleft_end = -(ws[3, end] + Xleft * ws[1, end]) / ws[2, end]
     Yright_end = -(ws[3, end] + Xright * ws[1, end]) / ws[2, end]

@@ -29,8 +29,7 @@ CairoMakie.activate!(type = "svg")
 
 ```{julia}
 #| output : false
-colors = Makie.wong_colors()
-blue, orange, red = colors[1], colors[2], colors[6]
+blue, orange, green, pink, teal, red, yellow = Makie.wong_colors()
 ```
 
 ```{julia}
@@ -79,7 +78,7 @@ for irep = 1:nrep
     ns = ones(k)
     rho = 2 * log(k)
     upper_bounds_2 = rewards_per_arm ./ ns .+ sqrt.(0.5 * rho ./ ns)
-    
+
     for t = k+1:maxt
         arm = argmax(upper_bounds_2)
         reward = Float64(rand() < means[arm])

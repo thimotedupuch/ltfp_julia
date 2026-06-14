@@ -29,8 +29,7 @@ CairoMakie.activate!(type = "svg")
 
 ```{julia}
 #| output : false
-colors = Makie.wong_colors()
-blue, orange, red = colors[1], colors[2], colors[6]
+blue, orange, green, pink, teal, red, yellow = Makie.wong_colors()
 ```
 
 ```{julia}
@@ -53,16 +52,16 @@ test_error = zeros(nrep, length(ns))
 for irep in 1:nrep
     for in in 1:length(ns)
         n = ns[in]
-        
+
         Xsample = rand(n) .* 2 .- 1
         Ysample = Xsample .^ 2 .- 0.5 .+ randn(n) .* std_noise
-        
+
         Xdata = hcat([Xsample .^ i for i in 0:kmax]...)
         Xgriddata = hcat([Xgrid .^ i for i in 0:kmax]...)
-        
+
         wdata = Xdata \ Ysample
         Ygrid_prediction = Xgriddata * wdata
-        
+
         train_error[irep, in] = mean((Xdata * wdata .- Ysample) .^ 2)
         insample_error[irep, in] = mean((Xdata * wdata .- (Xsample .^ 2 .- 0.5)) .^ 2)
         test_error[irep, in] = std_noise^2 + mean((Ygrid_prediction .- Ygrid) .^ 2)
@@ -81,8 +80,8 @@ x_log = log10.(ns)
 fig = Figure(size=(800, 400))
 
 # Fixed design (Subplot 1)
-ax1 = Axis(fig[1, 1], 
-           xlabel=L"\log_{10}(n)", 
+ax1 = Axis(fig[1, 1],
+           xlabel=L"\log_{10}(n)",
            ylabel=L"\log_{10}(\text{excess risk})",
            title="Fixed design",
            titlefont=:regular,
@@ -104,8 +103,8 @@ axislegend(ax1, position=:rt)
 limits!(ax1, 1, 5, -6, 4)
 
 # Random design (Subplot 2)
-ax2 = Axis(fig[1, 2], 
-           xlabel=L"\log_{10}(n)", 
+ax2 = Axis(fig[1, 2],
+           xlabel=L"\log_{10}(n)",
            ylabel=L"\log_{10}(\text{excess risk})",
            title="Random design",
            titlefont=:regular,

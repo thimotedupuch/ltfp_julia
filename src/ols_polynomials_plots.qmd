@@ -33,8 +33,7 @@ CairoMakie.activate!(type = "svg")
 
 ```{julia}
 #| output : false
-colors = Makie.wong_colors()
-blue, orange, red = colors[1], colors[2], colors[6]
+blue, orange, green, pink, teal, red, yellow = Makie.wong_colors()
 ```
 
 

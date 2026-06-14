@@ -33,8 +33,7 @@ CairoMakie.activate!(type = "svg")
 
 ```{julia}
 #| output : false
-colors = Makie.wong_colors()
-blue, orange, green, red = colors[1], colors[2], colors[3], colors[6]
+blue, orange, green, pink, teal, red, yellow = Makie.wong_colors()
 ```
 
 ```{julia}
@@ -51,7 +50,7 @@ function plot_binary_classification_scores()
     μ2, σ2 = -2.0, 1.0
 
     pdf1 = gaussian_pdf(x, μ1, σ1)
-    pdf2 = gaussian_pdf(x, μ2, σ2)  
+    pdf2 = gaussian_pdf(x, μ2, σ2)
     η = pdf1 ./ (pdf1 .+ pdf2) # Posterior probability
 
     fig = Figure(size=(800, 400))

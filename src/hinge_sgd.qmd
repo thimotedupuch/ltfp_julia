@@ -32,8 +32,7 @@ CairoMakie.activate!(type = "svg")
 
 ```{julia}
 #| output : false
-colors = Makie.wong_colors()
-blue, orange, green, red = colors[1], colors[2], colors[3], colors[6]
+blue, orange, green, pink, teal, red, yellow = Makie.wong_colors()
 ```
 
 
@@ -61,30 +60,30 @@ function run_exp(mu; maxiter_sgd=10_000, maxiter_gd=100_000)
     f_s = zeros(maxiter_sgd)
     f_m = zeros(maxiter_sgd)
     f_g = zeros(maxiter_gd)
-    
+
     # SGD loops
     for t in 1:maxiter_sgd
         f_s[t], f_m[t] = obj(w_s, mu), obj(w_m, mu)
-        
+
         it = rand(1:n)
         x_it, y_it = X[it, :], y[it]
-        
+
         # SGD 1/sqrt(t)
         grad_s = ifelse(1.0 - y_it * dot(x_it, w_s) > 0, mu * w_s - y_it * x_it, mu * w_s)
         w_s -= (1.0 / (sqrt(t) * R2)) * grad_s
-        
+
         # SGD 1/(mu*t)
         grad_m = ifelse(1.0 - y_it * dot(x_it, w_m) > 0, mu * w_m - y_it * x_it, mu * w_m)
         w_m -= (1.0 / (mu * (t + 1))) * grad_m
     end
-    
+
     # GD loop
     for t in 1:maxiter_gd
         f_g[t] = obj(w_g, mu)
         ind = Float64.(1.0 .- y .* (X * w_g) .> 0)
         w_g -= (1.0 / (mu * (t + 1))) * (mu * w_g - (1.0 / n) * (X' * (y .* ind)))
     end
-    
+
     return f_s, f_m, f_g[end]
 end
 
@@ -100,7 +99,7 @@ t_range = 1:maxiter
 log_t = log10.(t_range)
 
 # Row 1: mu = 0.1
-ax1 = Axis(fig[1, 1], xlabel=L"t", ylabel=L"F(\theta_t) - F(\eta_\ast)", 
+ax1 = Axis(fig[1, 1], xlabel=L"t", ylabel=L"F(\theta_t) - F(\eta_\ast)",
            title="semi-log plot - μ = 0.1", limits=(1, maxiter, 0, 0.5))
 lines!(ax1, t_range, f_s1 .- f_star1, color=red, linewidth=2, label=L"\gamma_t = 1/(R^2 t^{1/2})")
 lines!(ax1, t_range, f_m1 .- f_star1, color=blue, linewidth=2, label=L"\gamma_t = 1/(\mu t)")
