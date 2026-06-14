@@ -2242,8 +2242,7 @@ vertical-align: -.125em;
 <div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb1"><pre class="sourceCode julia code-with-copy"><code class="sourceCode julia"><span id="cb1-1"><a href="#cb1-1" aria-hidden="true" tabindex="-1"></a><span class="im">using</span> <span class="bu">CairoMakie</span>, <span class="bu">Statistics</span>, <span class="bu">Random</span>, <span class="bu">LinearAlgebra</span></span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
 </div>
 <div id="8" class="cell" data-execution_count="1">
-<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb2"><pre class="sourceCode julia code-with-copy"><code class="sourceCode julia"><span id="cb2-1"><a href="#cb2-1" aria-hidden="true" tabindex="-1"></a>colors <span class="op">=</span> Makie.<span class="fu">wong_colors</span>()</span>
-<span id="cb2-2"><a href="#cb2-2" aria-hidden="true" tabindex="-1"></a>blue, orange, red <span class="op">=</span> colors[<span class="fl">1</span>], colors[<span class="fl">2</span>], colors[<span class="fl">6</span>]</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb2"><pre class="sourceCode julia code-with-copy"><code class="sourceCode julia"><span id="cb2-1"><a href="#cb2-1" aria-hidden="true" tabindex="-1"></a>blue, orange, green, pink, teal, red, yellow <span class="op">=</span> Makie.<span class="fu">wong_colors</span>()</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
 </div>
 <div id="10" class="cell" data-execution_count="1">
 <div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb3"><pre class="sourceCode julia code-with-copy"><code class="sourceCode julia"><span id="cb3-1"><a href="#cb3-1" aria-hidden="true" tabindex="-1"></a><span class="co"># separable data</span></span>
@@ -2251,28 +2250,31 @@ vertical-align: -.125em;
 <span id="cb3-3"><a href="#cb3-3" aria-hidden="true" tabindex="-1"></a>d <span class="op">=</span> <span class="fl">2</span></span>
 <span id="cb3-4"><a href="#cb3-4" aria-hidden="true" tabindex="-1"></a>n <span class="op">=</span> <span class="fl">100</span></span>
 <span id="cb3-5"><a href="#cb3-5" aria-hidden="true" tabindex="-1"></a>y <span class="op">=</span> [<span class="fu">ones</span>(n <span class="op">÷</span> <span class="fl">2</span>); <span class="fu">-ones</span>(n <span class="op">÷</span> <span class="fl">2</span>)]</span>
-<span id="cb3-6"><a href="#cb3-6" aria-hidden="true" tabindex="-1"></a>X <span class="op">=</span> [<span class="fu">-ones</span>(n <span class="op">÷</span> <span class="fl">2</span>, <span class="fl">1</span>) <span class="fu">-ones</span>(n <span class="op">÷</span> <span class="fl">2</span>, <span class="fl">1</span>); <span class="fu">ones</span>(n <span class="op">÷</span> <span class="fl">2</span>, <span class="fl">1</span>) <span class="fu">ones</span>(n <span class="op">÷</span> <span class="fl">2</span>, <span class="fl">1</span>)] <span class="op">.+</span> <span class="fu">randn</span>(n, <span class="fl">2</span>) <span class="op">./</span> <span class="fl">2</span></span>
-<span id="cb3-7"><a href="#cb3-7" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb3-8"><a href="#cb3-8" aria-hidden="true" tabindex="-1"></a>X_ext <span class="op">=</span> [X <span class="fu">ones</span>(n)]</span>
-<span id="cb3-9"><a href="#cb3-9" aria-hidden="true" tabindex="-1"></a>d <span class="op">=</span> d <span class="op">+</span> <span class="fl">1</span></span>
-<span id="cb3-10"><a href="#cb3-10" aria-hidden="true" tabindex="-1"></a>L <span class="op">=</span> <span class="fu">opnorm</span>(X_ext)<span class="op">^</span><span class="fl">2</span> <span class="op">/</span> n</span>
-<span id="cb3-11"><a href="#cb3-11" aria-hidden="true" tabindex="-1"></a>w <span class="op">=</span> <span class="fu">randn</span>(d)</span>
-<span id="cb3-12"><a href="#cb3-12" aria-hidden="true" tabindex="-1"></a>w[<span class="kw">end</span>] <span class="op">=</span> <span class="fl">0.0</span></span>
-<span id="cb3-13"><a href="#cb3-13" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb3-14"><a href="#cb3-14" aria-hidden="true" tabindex="-1"></a><span class="co"># GD</span></span>
-<span id="cb3-15"><a href="#cb3-15" aria-hidden="true" tabindex="-1"></a>maxiter <span class="op">=</span> <span class="fl">100000</span></span>
-<span id="cb3-16"><a href="#cb3-16" aria-hidden="true" tabindex="-1"></a>ws <span class="op">=</span> <span class="fu">zeros</span>(d, maxiter)</span>
-<span id="cb3-17"><a href="#cb3-17" aria-hidden="true" tabindex="-1"></a>functionerror <span class="op">=</span> <span class="fu">zeros</span>(maxiter)</span>
-<span id="cb3-18"><a href="#cb3-18" aria-hidden="true" tabindex="-1"></a>functionval <span class="op">=</span> <span class="fu">zeros</span>(maxiter)</span>
-<span id="cb3-19"><a href="#cb3-19" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb3-20"><a href="#cb3-20" aria-hidden="true" tabindex="-1"></a><span class="cf">for</span> iter <span class="kw">in</span> <span class="fl">1</span><span class="op">:</span>maxiter</span>
-<span id="cb3-21"><a href="#cb3-21" aria-hidden="true" tabindex="-1"></a>    ws[<span class="op">:</span>, iter] <span class="op">=</span> w</span>
-<span id="cb3-22"><a href="#cb3-22" aria-hidden="true" tabindex="-1"></a>    functionerror[iter] <span class="op">=</span> <span class="fu">mean</span>(y <span class="op">.*</span> (X_ext <span class="op">*</span> w) <span class="op">.&lt;</span> <span class="fl">0</span>)</span>
-<span id="cb3-23"><a href="#cb3-23" aria-hidden="true" tabindex="-1"></a>    functionval[iter] <span class="op">=</span> <span class="fu">mean</span>(<span class="fu">log</span>.(<span class="fl">1</span> <span class="op">.+</span> <span class="fu">exp</span>.(<span class="op">-</span>y <span class="op">.*</span> (X_ext <span class="op">*</span> w))))</span>
-<span id="cb3-24"><a href="#cb3-24" aria-hidden="true" tabindex="-1"></a>    temp <span class="op">=</span> (X_ext <span class="op">*</span> w) <span class="op">.*</span> y</span>
-<span id="cb3-25"><a href="#cb3-25" aria-hidden="true" tabindex="-1"></a>    grad <span class="op">=</span> (<span class="fl">1</span> <span class="op">/</span> n) <span class="op">*</span> X_ext<span class="op">&#39;</span> <span class="op">*</span> (y <span class="op">.*</span> (<span class="op">-</span><span class="fl">1</span> <span class="op">./</span> (<span class="fl">1</span> <span class="op">.+</span> <span class="fu">exp</span>.(temp))))</span>
-<span id="cb3-26"><a href="#cb3-26" aria-hidden="true" tabindex="-1"></a>    <span class="kw">global</span> w <span class="op">=</span> w <span class="op">-</span> (<span class="fl">1</span> <span class="op">/</span> L) <span class="op">*</span> grad</span>
-<span id="cb3-27"><a href="#cb3-27" aria-hidden="true" tabindex="-1"></a><span class="cf">end</span></span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<span id="cb3-6"><a href="#cb3-6" aria-hidden="true" tabindex="-1"></a>X <span class="op">=</span> [</span>
+<span id="cb3-7"><a href="#cb3-7" aria-hidden="true" tabindex="-1"></a>    <span class="fu">-ones</span>(n <span class="op">÷</span> <span class="fl">2</span>, <span class="fl">1</span>) <span class="fu">-ones</span>(n <span class="op">÷</span> <span class="fl">2</span>, <span class="fl">1</span>);</span>
+<span id="cb3-8"><a href="#cb3-8" aria-hidden="true" tabindex="-1"></a>    <span class="fu">ones</span>(n <span class="op">÷</span> <span class="fl">2</span>, <span class="fl">1</span>) <span class="fu">ones</span>(n <span class="op">÷</span> <span class="fl">2</span>, <span class="fl">1</span>)</span>
+<span id="cb3-9"><a href="#cb3-9" aria-hidden="true" tabindex="-1"></a>    ] <span class="op">.+</span> <span class="fu">randn</span>(n, <span class="fl">2</span>) <span class="op">./</span> <span class="fl">2</span></span>
+<span id="cb3-10"><a href="#cb3-10" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb3-11"><a href="#cb3-11" aria-hidden="true" tabindex="-1"></a>X_ext <span class="op">=</span> [X <span class="fu">ones</span>(n)]</span>
+<span id="cb3-12"><a href="#cb3-12" aria-hidden="true" tabindex="-1"></a>d <span class="op">=</span> d <span class="op">+</span> <span class="fl">1</span></span>
+<span id="cb3-13"><a href="#cb3-13" aria-hidden="true" tabindex="-1"></a>L <span class="op">=</span> <span class="fu">opnorm</span>(X_ext)<span class="op">^</span><span class="fl">2</span> <span class="op">/</span> n</span>
+<span id="cb3-14"><a href="#cb3-14" aria-hidden="true" tabindex="-1"></a>w <span class="op">=</span> <span class="fu">randn</span>(d)</span>
+<span id="cb3-15"><a href="#cb3-15" aria-hidden="true" tabindex="-1"></a>w[<span class="kw">end</span>] <span class="op">=</span> <span class="fl">0.0</span></span>
+<span id="cb3-16"><a href="#cb3-16" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb3-17"><a href="#cb3-17" aria-hidden="true" tabindex="-1"></a><span class="co"># GD</span></span>
+<span id="cb3-18"><a href="#cb3-18" aria-hidden="true" tabindex="-1"></a>maxiter <span class="op">=</span> <span class="fl">100000</span></span>
+<span id="cb3-19"><a href="#cb3-19" aria-hidden="true" tabindex="-1"></a>ws <span class="op">=</span> <span class="fu">zeros</span>(d, maxiter)</span>
+<span id="cb3-20"><a href="#cb3-20" aria-hidden="true" tabindex="-1"></a>functionerror <span class="op">=</span> <span class="fu">zeros</span>(maxiter)</span>
+<span id="cb3-21"><a href="#cb3-21" aria-hidden="true" tabindex="-1"></a>functionval <span class="op">=</span> <span class="fu">zeros</span>(maxiter)</span>
+<span id="cb3-22"><a href="#cb3-22" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb3-23"><a href="#cb3-23" aria-hidden="true" tabindex="-1"></a><span class="cf">for</span> iter <span class="kw">in</span> <span class="fl">1</span><span class="op">:</span>maxiter</span>
+<span id="cb3-24"><a href="#cb3-24" aria-hidden="true" tabindex="-1"></a>    ws[<span class="op">:</span>, iter] <span class="op">=</span> w</span>
+<span id="cb3-25"><a href="#cb3-25" aria-hidden="true" tabindex="-1"></a>    functionerror[iter] <span class="op">=</span> <span class="fu">mean</span>(y <span class="op">.*</span> (X_ext <span class="op">*</span> w) <span class="op">.&lt;</span> <span class="fl">0</span>)</span>
+<span id="cb3-26"><a href="#cb3-26" aria-hidden="true" tabindex="-1"></a>    functionval[iter] <span class="op">=</span> <span class="fu">mean</span>(<span class="fu">log</span>.(<span class="fl">1</span> <span class="op">.+</span> <span class="fu">exp</span>.(<span class="op">-</span>y <span class="op">.*</span> (X_ext <span class="op">*</span> w))))</span>
+<span id="cb3-27"><a href="#cb3-27" aria-hidden="true" tabindex="-1"></a>    temp <span class="op">=</span> (X_ext <span class="op">*</span> w) <span class="op">.*</span> y</span>
+<span id="cb3-28"><a href="#cb3-28" aria-hidden="true" tabindex="-1"></a>    grad <span class="op">=</span> (<span class="fl">1</span> <span class="op">/</span> n) <span class="op">*</span> X_ext<span class="op">&#39;</span> <span class="op">*</span> (y <span class="op">.*</span> (<span class="op">-</span><span class="fl">1</span> <span class="op">./</span> (<span class="fl">1</span> <span class="op">.+</span> <span class="fu">exp</span>.(temp))))</span>
+<span id="cb3-29"><a href="#cb3-29" aria-hidden="true" tabindex="-1"></a>    <span class="kw">global</span> w <span class="op">=</span> w <span class="op">-</span> (<span class="fl">1</span> <span class="op">/</span> L) <span class="op">*</span> grad</span>
+<span id="cb3-30"><a href="#cb3-30" aria-hidden="true" tabindex="-1"></a><span class="cf">end</span></span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
 </div>
 <div id="12" class="cell" data-execution_count="1">
 <div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb4"><pre class="sourceCode julia code-with-copy"><code class="sourceCode julia"><span id="cb4-1"><a href="#cb4-1" aria-hidden="true" tabindex="-1"></a>itertoplot <span class="op">=</span> <span class="fu">round</span>.(<span class="dt">Int</span>, <span class="fl">2</span> <span class="op">.^</span> (<span class="fl">0.5</span><span class="op">:</span><span class="fl">0.5</span><span class="op">:</span><span class="fl">9</span>))</span>
@@ -2280,27 +2282,42 @@ vertical-align: -.125em;
 <span id="cb4-3"><a href="#cb4-3" aria-hidden="true" tabindex="-1"></a><span class="cf">for</span> (i, it) <span class="kw">in</span> <span class="fu">enumerate</span>(itertoplot)</span>
 <span id="cb4-4"><a href="#cb4-4" aria-hidden="true" tabindex="-1"></a>    row <span class="op">=</span> (i <span class="op">-</span> <span class="fl">1</span>) <span class="op">÷</span> <span class="fl">6</span> <span class="op">+</span> <span class="fl">1</span></span>
 <span id="cb4-5"><a href="#cb4-5" aria-hidden="true" tabindex="-1"></a>    col <span class="op">=</span> (i <span class="op">-</span> <span class="fl">1</span>) <span class="op">%</span> <span class="fl">6</span> <span class="op">+</span> <span class="fl">1</span></span>
-<span id="cb4-6"><a href="#cb4-6" aria-hidden="true" tabindex="-1"></a>    ax <span class="op">=</span> <span class="fu">Axis</span>(fig[row, col], title<span class="op">=</span><span class="st">&quot;t = </span><span class="sc">$</span>it<span class="st">&quot;</span>, limits<span class="op">=</span>(<span class="op">-</span><span class="fl">4</span>, <span class="fl">4</span>, <span class="op">-</span><span class="fl">4</span>, <span class="fl">4</span>),</span>
-<span id="cb4-7"><a href="#cb4-7" aria-hidden="true" tabindex="-1"></a>              xticklabelsvisible<span class="op">=</span><span class="cn">false</span>, yticklabelsvisible<span class="op">=</span><span class="cn">false</span>,</span>
-<span id="cb4-8"><a href="#cb4-8" aria-hidden="true" tabindex="-1"></a>              xticksvisible<span class="op">=</span><span class="cn">false</span>, yticksvisible<span class="op">=</span><span class="cn">false</span>)</span>
-<span id="cb4-9"><a href="#cb4-9" aria-hidden="true" tabindex="-1"></a>    </span>
-<span id="cb4-10"><a href="#cb4-10" aria-hidden="true" tabindex="-1"></a>    <span class="fu">scatter!</span>(ax, X[y <span class="op">.==</span> <span class="fl">1</span>, <span class="fl">1</span>], X[y <span class="op">.==</span> <span class="fl">1</span>, <span class="fl">2</span>], marker<span class="op">=:</span>cross, color<span class="op">=</span>blue, markersize<span class="op">=</span><span class="fl">10</span>)</span>
-<span id="cb4-11"><a href="#cb4-11" aria-hidden="true" tabindex="-1"></a>    <span class="fu">scatter!</span>(ax, X[y <span class="op">.==</span> <span class="op">-</span><span class="fl">1</span>, <span class="fl">1</span>], X[y <span class="op">.==</span> <span class="op">-</span><span class="fl">1</span>, <span class="fl">2</span>], marker<span class="op">=:</span>cross, color<span class="op">=</span>red, markersize<span class="op">=</span><span class="fl">10</span>)</span>
-<span id="cb4-12"><a href="#cb4-12" aria-hidden="true" tabindex="-1"></a>    </span>
-<span id="cb4-13"><a href="#cb4-13" aria-hidden="true" tabindex="-1"></a>    Xleft, Xright <span class="op">=</span> <span class="op">-</span><span class="fl">10.0</span>, <span class="fl">10.0</span></span>
-<span id="cb4-14"><a href="#cb4-14" aria-hidden="true" tabindex="-1"></a>    </span>
-<span id="cb4-15"><a href="#cb4-15" aria-hidden="true" tabindex="-1"></a>    <span class="co"># Boundary at current iter</span></span>
-<span id="cb4-16"><a href="#cb4-16" aria-hidden="true" tabindex="-1"></a>    Yleft <span class="op">=</span> <span class="fu">-</span>(ws[<span class="fl">3</span>, it] <span class="op">+</span> Xleft <span class="op">*</span> ws[<span class="fl">1</span>, it]) <span class="op">/</span> ws[<span class="fl">2</span>, it]</span>
-<span id="cb4-17"><a href="#cb4-17" aria-hidden="true" tabindex="-1"></a>    Yright <span class="op">=</span> <span class="fu">-</span>(ws[<span class="fl">3</span>, it] <span class="op">+</span> Xright <span class="op">*</span> ws[<span class="fl">1</span>, it]) <span class="op">/</span> ws[<span class="fl">2</span>, it]</span>
-<span id="cb4-18"><a href="#cb4-18" aria-hidden="true" tabindex="-1"></a>    <span class="fu">lines!</span>(ax, [Xleft, Xright], [Yleft, Yright], color<span class="op">=:</span>black, linewidth<span class="op">=</span><span class="fl">2</span>)</span>
-<span id="cb4-19"><a href="#cb4-19" aria-hidden="true" tabindex="-1"></a>    </span>
-<span id="cb4-20"><a href="#cb4-20" aria-hidden="true" tabindex="-1"></a>    <span class="co"># Boundary at end</span></span>
-<span id="cb4-21"><a href="#cb4-21" aria-hidden="true" tabindex="-1"></a>    Yleft_end <span class="op">=</span> <span class="fu">-</span>(ws[<span class="fl">3</span>, <span class="kw">end</span>] <span class="op">+</span> Xleft <span class="op">*</span> ws[<span class="fl">1</span>, <span class="kw">end</span>]) <span class="op">/</span> ws[<span class="fl">2</span>, <span class="kw">end</span>]</span>
-<span id="cb4-22"><a href="#cb4-22" aria-hidden="true" tabindex="-1"></a>    Yright_end <span class="op">=</span> <span class="fu">-</span>(ws[<span class="fl">3</span>, <span class="kw">end</span>] <span class="op">+</span> Xright <span class="op">*</span> ws[<span class="fl">1</span>, <span class="kw">end</span>]) <span class="op">/</span> ws[<span class="fl">2</span>, <span class="kw">end</span>]</span>
-<span id="cb4-23"><a href="#cb4-23" aria-hidden="true" tabindex="-1"></a>    <span class="fu">lines!</span>(ax, [Xleft, Xright], [Yleft_end, Yright_end], color<span class="op">=:</span>black, linestyle<span class="op">=:</span>dot, linewidth<span class="op">=</span><span class="fl">2</span>)</span>
-<span id="cb4-24"><a href="#cb4-24" aria-hidden="true" tabindex="-1"></a><span class="cf">end</span></span>
-<span id="cb4-25"><a href="#cb4-25" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb4-26"><a href="#cb4-26" aria-hidden="true" tabindex="-1"></a>fig</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<span id="cb4-6"><a href="#cb4-6" aria-hidden="true" tabindex="-1"></a>    ax <span class="op">=</span> <span class="fu">Axis</span>(</span>
+<span id="cb4-7"><a href="#cb4-7" aria-hidden="true" tabindex="-1"></a>        fig[row, col],</span>
+<span id="cb4-8"><a href="#cb4-8" aria-hidden="true" tabindex="-1"></a>        title<span class="op">=</span><span class="st">&quot;t = </span><span class="sc">$</span>it<span class="st">&quot;</span>,</span>
+<span id="cb4-9"><a href="#cb4-9" aria-hidden="true" tabindex="-1"></a>        limits<span class="op">=</span>(<span class="op">-</span><span class="fl">4</span>, <span class="fl">4</span>, <span class="op">-</span><span class="fl">4</span>, <span class="fl">4</span>),</span>
+<span id="cb4-10"><a href="#cb4-10" aria-hidden="true" tabindex="-1"></a>        xticklabelsvisible<span class="op">=</span><span class="cn">false</span>,</span>
+<span id="cb4-11"><a href="#cb4-11" aria-hidden="true" tabindex="-1"></a>        yticklabelsvisible<span class="op">=</span><span class="cn">false</span>,</span>
+<span id="cb4-12"><a href="#cb4-12" aria-hidden="true" tabindex="-1"></a>        xticksvisible<span class="op">=</span><span class="cn">false</span>,</span>
+<span id="cb4-13"><a href="#cb4-13" aria-hidden="true" tabindex="-1"></a>        yticksvisible<span class="op">=</span><span class="cn">false</span></span>
+<span id="cb4-14"><a href="#cb4-14" aria-hidden="true" tabindex="-1"></a>    )</span>
+<span id="cb4-15"><a href="#cb4-15" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb4-16"><a href="#cb4-16" aria-hidden="true" tabindex="-1"></a>    <span class="fu">scatter!</span>(</span>
+<span id="cb4-17"><a href="#cb4-17" aria-hidden="true" tabindex="-1"></a>        ax, X[y <span class="op">.==</span> <span class="fl">1</span>, <span class="fl">1</span>], X[y <span class="op">.==</span> <span class="fl">1</span>, <span class="fl">2</span>],</span>
+<span id="cb4-18"><a href="#cb4-18" aria-hidden="true" tabindex="-1"></a>        marker<span class="op">=:</span>cross, color<span class="op">=</span>blue, markersize<span class="op">=</span><span class="fl">10</span></span>
+<span id="cb4-19"><a href="#cb4-19" aria-hidden="true" tabindex="-1"></a>    )</span>
+<span id="cb4-20"><a href="#cb4-20" aria-hidden="true" tabindex="-1"></a>    <span class="fu">scatter!</span>(</span>
+<span id="cb4-21"><a href="#cb4-21" aria-hidden="true" tabindex="-1"></a>        ax, X[y <span class="op">.==</span> <span class="op">-</span><span class="fl">1</span>, <span class="fl">1</span>], X[y <span class="op">.==</span> <span class="op">-</span><span class="fl">1</span>, <span class="fl">2</span>],</span>
+<span id="cb4-22"><a href="#cb4-22" aria-hidden="true" tabindex="-1"></a>        marker<span class="op">=:</span>cross, color<span class="op">=</span>red, markersize<span class="op">=</span><span class="fl">10</span></span>
+<span id="cb4-23"><a href="#cb4-23" aria-hidden="true" tabindex="-1"></a>    )</span>
+<span id="cb4-24"><a href="#cb4-24" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb4-25"><a href="#cb4-25" aria-hidden="true" tabindex="-1"></a>    Xleft, Xright <span class="op">=</span> <span class="op">-</span><span class="fl">10.0</span>, <span class="fl">10.0</span></span>
+<span id="cb4-26"><a href="#cb4-26" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb4-27"><a href="#cb4-27" aria-hidden="true" tabindex="-1"></a>    <span class="co"># Boundary at current iter</span></span>
+<span id="cb4-28"><a href="#cb4-28" aria-hidden="true" tabindex="-1"></a>    Yleft <span class="op">=</span> <span class="fu">-</span>(ws[<span class="fl">3</span>, it] <span class="op">+</span> Xleft <span class="op">*</span> ws[<span class="fl">1</span>, it]) <span class="op">/</span> ws[<span class="fl">2</span>, it]</span>
+<span id="cb4-29"><a href="#cb4-29" aria-hidden="true" tabindex="-1"></a>    Yright <span class="op">=</span> <span class="fu">-</span>(ws[<span class="fl">3</span>, it] <span class="op">+</span> Xright <span class="op">*</span> ws[<span class="fl">1</span>, it]) <span class="op">/</span> ws[<span class="fl">2</span>, it]</span>
+<span id="cb4-30"><a href="#cb4-30" aria-hidden="true" tabindex="-1"></a>    <span class="fu">lines!</span>(ax, [Xleft, Xright], [Yleft, Yright], color<span class="op">=:</span>black, linewidth<span class="op">=</span><span class="fl">2</span>)</span>
+<span id="cb4-31"><a href="#cb4-31" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb4-32"><a href="#cb4-32" aria-hidden="true" tabindex="-1"></a>    <span class="co"># Boundary at end</span></span>
+<span id="cb4-33"><a href="#cb4-33" aria-hidden="true" tabindex="-1"></a>    Yleft_end <span class="op">=</span> <span class="fu">-</span>(ws[<span class="fl">3</span>, <span class="kw">end</span>] <span class="op">+</span> Xleft <span class="op">*</span> ws[<span class="fl">1</span>, <span class="kw">end</span>]) <span class="op">/</span> ws[<span class="fl">2</span>, <span class="kw">end</span>]</span>
+<span id="cb4-34"><a href="#cb4-34" aria-hidden="true" tabindex="-1"></a>    Yright_end <span class="op">=</span> <span class="fu">-</span>(ws[<span class="fl">3</span>, <span class="kw">end</span>] <span class="op">+</span> Xright <span class="op">*</span> ws[<span class="fl">1</span>, <span class="kw">end</span>]) <span class="op">/</span> ws[<span class="fl">2</span>, <span class="kw">end</span>]</span>
+<span id="cb4-35"><a href="#cb4-35" aria-hidden="true" tabindex="-1"></a>    <span class="fu">lines!</span>(</span>
+<span id="cb4-36"><a href="#cb4-36" aria-hidden="true" tabindex="-1"></a>        ax, [Xleft, Xright], [Yleft_end, Yright_end],</span>
+<span id="cb4-37"><a href="#cb4-37" aria-hidden="true" tabindex="-1"></a>        color<span class="op">=:</span>black, linestyle<span class="op">=:</span>dot, linewidth<span class="op">=</span><span class="fl">2</span></span>
+<span id="cb4-38"><a href="#cb4-38" aria-hidden="true" tabindex="-1"></a>    )</span>
+<span id="cb4-39"><a href="#cb4-39" aria-hidden="true" tabindex="-1"></a><span class="cf">end</span></span>
+<span id="cb4-40"><a href="#cb4-40" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb4-41"><a href="#cb4-41" aria-hidden="true" tabindex="-1"></a>fig</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
 <div class="cell-output cell-output-display" data-execution_count="1">
 <div>
 <figure class="figure">

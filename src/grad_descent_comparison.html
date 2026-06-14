@@ -7,7 +7,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes">
 
 <meta name="author" content="Thimoté Dupuch">
-<meta name="dcterms.date" content="2026-04-03">
+<meta name="dcterms.date" content="2026-06-14">
 
 <title>Gradient descent comparison</title>
 <style>
@@ -2226,7 +2226,7 @@ vertical-align: -.125em;
     <div>
     <div class="quarto-title-meta-heading">Published</div>
     <div class="quarto-title-meta-contents">
-      <p class="date">April 3, 2026</p>
+      <p class="date">June 14, 2026</p>
     </div>
   </div>
   
@@ -2242,107 +2242,96 @@ vertical-align: -.125em;
 <div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb1"><pre class="sourceCode julia code-with-copy"><code class="sourceCode julia"><span id="cb1-1"><a href="#cb1-1" aria-hidden="true" tabindex="-1"></a><span class="im">using</span> <span class="bu">LinearAlgebra</span>, <span class="bu">Random</span>, <span class="bu">Statistics</span>, <span class="bu">CairoMakie</span></span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
 </div>
 <div id="8" class="cell" data-execution_count="1">
-<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb2"><pre class="sourceCode julia code-with-copy"><code class="sourceCode julia"><span id="cb2-1"><a href="#cb2-1" aria-hidden="true" tabindex="-1"></a>colors <span class="op">=</span> Makie.<span class="fu">wong_colors</span>()</span>
-<span id="cb2-2"><a href="#cb2-2" aria-hidden="true" tabindex="-1"></a>blue, orange, green, red <span class="op">=</span> colors[<span class="fl">1</span>], colors[<span class="fl">2</span>], colors[<span class="fl">3</span>], colors[<span class="fl">6</span>]</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb2"><pre class="sourceCode julia code-with-copy"><code class="sourceCode julia"><span id="cb2-1"><a href="#cb2-1" aria-hidden="true" tabindex="-1"></a>blue, orange, green, pink, teal, red, yellow <span class="op">=</span> Makie.<span class="fu">wong_colors</span>()</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
 </div>
 <div id="10" class="cell" data-execution_count="1">
-<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb3"><pre class="sourceCode julia code-with-copy"><code class="sourceCode julia"><span id="cb3-1"><a href="#cb3-1" aria-hidden="true" tabindex="-1"></a><span class="im">using</span> <span class="bu">LinearAlgebra</span></span>
-<span id="cb3-2"><a href="#cb3-2" aria-hidden="true" tabindex="-1"></a><span class="im">using</span> <span class="bu">Random</span></span>
-<span id="cb3-3"><a href="#cb3-3" aria-hidden="true" tabindex="-1"></a><span class="im">using</span> <span class="bu">CairoMakie</span></span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb3"><pre class="sourceCode julia code-with-copy"><code class="sourceCode julia"><span id="cb3-1"><a href="#cb3-1" aria-hidden="true" tabindex="-1"></a><span class="kw">function</span> <span class="fu">build_problem</span>(d, spectrum_fn)</span>
+<span id="cb3-2"><a href="#cb3-2" aria-hidden="true" tabindex="-1"></a>    Hrand <span class="op">=</span> <span class="fu">randn</span>(d, d)</span>
+<span id="cb3-3"><a href="#cb3-3" aria-hidden="true" tabindex="-1"></a>    U, _, _ <span class="op">=</span> <span class="fu">svd</span>(Hrand)</span>
+<span id="cb3-4"><a href="#cb3-4" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb3-5"><a href="#cb3-5" aria-hidden="true" tabindex="-1"></a>    λ <span class="op">=</span> <span class="fu">spectrum_fn</span>(<span class="fl">1</span><span class="op">:</span>d)</span>
+<span id="cb3-6"><a href="#cb3-6" aria-hidden="true" tabindex="-1"></a>    H <span class="op">=</span> U <span class="op">*</span> <span class="fu">Diagonal</span>(λ) <span class="op">*</span> U<span class="op">&#39;</span></span>
+<span id="cb3-7"><a href="#cb3-7" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb3-8"><a href="#cb3-8" aria-hidden="true" tabindex="-1"></a>    <span class="co"># Largest eigenvalue (since λ is known)</span></span>
+<span id="cb3-9"><a href="#cb3-9" aria-hidden="true" tabindex="-1"></a>    L <span class="op">=</span> <span class="fu">maximum</span>(λ)</span>
+<span id="cb3-10"><a href="#cb3-10" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb3-11"><a href="#cb3-11" aria-hidden="true" tabindex="-1"></a>    <span class="co"># Ground truth</span></span>
+<span id="cb3-12"><a href="#cb3-12" aria-hidden="true" tabindex="-1"></a>    wstar <span class="op">=</span> U <span class="op">*</span> <span class="fu">randn</span>(d)</span>
+<span id="cb3-13"><a href="#cb3-13" aria-hidden="true" tabindex="-1"></a>    wstar <span class="op">/=</span> <span class="fu">sqrt</span>(wstar<span class="op">&#39;</span> <span class="op">*</span> H <span class="op">*</span> wstar)</span>
+<span id="cb3-14"><a href="#cb3-14" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb3-15"><a href="#cb3-15" aria-hidden="true" tabindex="-1"></a>    <span class="cf">return</span> H, wstar, L</span>
+<span id="cb3-16"><a href="#cb3-16" aria-hidden="true" tabindex="-1"></a><span class="kw">end</span></span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
 </div>
-<section id="build-quadratic-problem" class="level5">
-<h5 class="anchored" data-anchor-id="build-quadratic-problem">Build quadratic problem</h5>
 <div id="12" class="cell" data-execution_count="1">
-<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb4"><pre class="sourceCode julia code-with-copy"><code class="sourceCode julia"><span id="cb4-1"><a href="#cb4-1" aria-hidden="true" tabindex="-1"></a><span class="kw">function</span> <span class="fu">build_problem</span>(d, spectrum_fn)</span>
-<span id="cb4-2"><a href="#cb4-2" aria-hidden="true" tabindex="-1"></a>    Hrand <span class="op">=</span> <span class="fu">randn</span>(d, d)</span>
-<span id="cb4-3"><a href="#cb4-3" aria-hidden="true" tabindex="-1"></a>    U, _, _ <span class="op">=</span> <span class="fu">svd</span>(Hrand)</span>
-<span id="cb4-4"><a href="#cb4-4" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb4-5"><a href="#cb4-5" aria-hidden="true" tabindex="-1"></a>    λ <span class="op">=</span> <span class="fu">spectrum_fn</span>(<span class="fl">1</span><span class="op">:</span>d)</span>
-<span id="cb4-6"><a href="#cb4-6" aria-hidden="true" tabindex="-1"></a>    H <span class="op">=</span> U <span class="op">*</span> <span class="fu">Diagonal</span>(λ) <span class="op">*</span> U<span class="op">&#39;</span></span>
-<span id="cb4-7"><a href="#cb4-7" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb4-8"><a href="#cb4-8" aria-hidden="true" tabindex="-1"></a>    <span class="co"># Largest eigenvalue (since λ is known)</span></span>
-<span id="cb4-9"><a href="#cb4-9" aria-hidden="true" tabindex="-1"></a>    L <span class="op">=</span> <span class="fu">maximum</span>(λ)</span>
-<span id="cb4-10"><a href="#cb4-10" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb4-11"><a href="#cb4-11" aria-hidden="true" tabindex="-1"></a>    <span class="co"># Ground truth</span></span>
-<span id="cb4-12"><a href="#cb4-12" aria-hidden="true" tabindex="-1"></a>    wstar <span class="op">=</span> U <span class="op">*</span> <span class="fu">randn</span>(d)</span>
-<span id="cb4-13"><a href="#cb4-13" aria-hidden="true" tabindex="-1"></a>    wstar <span class="op">/=</span> <span class="fu">sqrt</span>(wstar<span class="op">&#39;</span> <span class="op">*</span> H <span class="op">*</span> wstar)</span>
-<span id="cb4-14"><a href="#cb4-14" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb4-15"><a href="#cb4-15" aria-hidden="true" tabindex="-1"></a>    <span class="cf">return</span> H, wstar, L</span>
-<span id="cb4-16"><a href="#cb4-16" aria-hidden="true" tabindex="-1"></a><span class="kw">end</span></span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb4"><pre class="sourceCode julia code-with-copy"><code class="sourceCode julia"><span id="cb4-1"><a href="#cb4-1" aria-hidden="true" tabindex="-1"></a><span class="kw">function</span> <span class="fu">run_gd</span>(H, wstar, L, maxiter)</span>
+<span id="cb4-2"><a href="#cb4-2" aria-hidden="true" tabindex="-1"></a>    d <span class="op">=</span> <span class="fu">length</span>(wstar)</span>
+<span id="cb4-3"><a href="#cb4-3" aria-hidden="true" tabindex="-1"></a>    w <span class="op">=</span> <span class="fu">zeros</span>(d)</span>
+<span id="cb4-4"><a href="#cb4-4" aria-hidden="true" tabindex="-1"></a>    F <span class="op">=</span> <span class="fu">zeros</span>(maxiter)</span>
+<span id="cb4-5"><a href="#cb4-5" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb4-6"><a href="#cb4-6" aria-hidden="true" tabindex="-1"></a>    <span class="cf">for</span> t <span class="kw">in</span> <span class="fl">1</span><span class="op">:</span>maxiter</span>
+<span id="cb4-7"><a href="#cb4-7" aria-hidden="true" tabindex="-1"></a>        diff <span class="op">=</span> w <span class="op">-</span> wstar</span>
+<span id="cb4-8"><a href="#cb4-8" aria-hidden="true" tabindex="-1"></a>        F[t] <span class="op">=</span> <span class="fl">0.5</span> <span class="op">*</span> <span class="fu">dot</span>(diff, H <span class="op">*</span> diff)</span>
+<span id="cb4-9"><a href="#cb4-9" aria-hidden="true" tabindex="-1"></a>        w <span class="op">-=</span> (<span class="fl">1</span> <span class="op">/</span> L) <span class="op">*</span> (H <span class="op">*</span> diff)</span>
+<span id="cb4-10"><a href="#cb4-10" aria-hidden="true" tabindex="-1"></a>    <span class="cf">end</span></span>
+<span id="cb4-11"><a href="#cb4-11" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb4-12"><a href="#cb4-12" aria-hidden="true" tabindex="-1"></a>    <span class="cf">return</span> F</span>
+<span id="cb4-13"><a href="#cb4-13" aria-hidden="true" tabindex="-1"></a><span class="kw">end</span></span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
 </div>
-</section>
-<section id="gradient-descent" class="level5">
-<h5 class="anchored" data-anchor-id="gradient-descent">Gradient descent</h5>
 <div id="14" class="cell" data-execution_count="1">
-<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb5"><pre class="sourceCode julia code-with-copy"><code class="sourceCode julia"><span id="cb5-1"><a href="#cb5-1" aria-hidden="true" tabindex="-1"></a><span class="kw">function</span> <span class="fu">run_gd</span>(H, wstar, L, maxiter)</span>
-<span id="cb5-2"><a href="#cb5-2" aria-hidden="true" tabindex="-1"></a>    d <span class="op">=</span> <span class="fu">length</span>(wstar)</span>
-<span id="cb5-3"><a href="#cb5-3" aria-hidden="true" tabindex="-1"></a>    w <span class="op">=</span> <span class="fu">zeros</span>(d)</span>
-<span id="cb5-4"><a href="#cb5-4" aria-hidden="true" tabindex="-1"></a>    F <span class="op">=</span> <span class="fu">zeros</span>(maxiter)</span>
-<span id="cb5-5"><a href="#cb5-5" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb5-6"><a href="#cb5-6" aria-hidden="true" tabindex="-1"></a>    <span class="cf">for</span> t <span class="kw">in</span> <span class="fl">1</span><span class="op">:</span>maxiter</span>
-<span id="cb5-7"><a href="#cb5-7" aria-hidden="true" tabindex="-1"></a>        diff <span class="op">=</span> w <span class="op">-</span> wstar</span>
-<span id="cb5-8"><a href="#cb5-8" aria-hidden="true" tabindex="-1"></a>        F[t] <span class="op">=</span> <span class="fl">0.5</span> <span class="op">*</span> <span class="fu">dot</span>(diff, H <span class="op">*</span> diff)</span>
-<span id="cb5-9"><a href="#cb5-9" aria-hidden="true" tabindex="-1"></a>        w <span class="op">-=</span> (<span class="fl">1</span> <span class="op">/</span> L) <span class="op">*</span> (H <span class="op">*</span> diff)</span>
-<span id="cb5-10"><a href="#cb5-10" aria-hidden="true" tabindex="-1"></a>    <span class="cf">end</span></span>
-<span id="cb5-11"><a href="#cb5-11" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb5-12"><a href="#cb5-12" aria-hidden="true" tabindex="-1"></a>    <span class="cf">return</span> F</span>
-<span id="cb5-13"><a href="#cb5-13" aria-hidden="true" tabindex="-1"></a><span class="kw">end</span></span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb5"><pre class="sourceCode julia code-with-copy"><code class="sourceCode julia"><span id="cb5-1"><a href="#cb5-1" aria-hidden="true" tabindex="-1"></a><span class="kw">function</span> <span class="fu">plot_gd_comparison</span>()</span>
+<span id="cb5-2"><a href="#cb5-2" aria-hidden="true" tabindex="-1"></a>    <span class="bu">Random</span>.<span class="fu">seed!</span>(<span class="fl">1</span>)</span>
+<span id="cb5-3"><a href="#cb5-3" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb5-4"><a href="#cb5-4" aria-hidden="true" tabindex="-1"></a>    d <span class="op">=</span> <span class="fl">1000</span></span>
+<span id="cb5-5"><a href="#cb5-5" aria-hidden="true" tabindex="-1"></a>    maxiter <span class="op">=</span> <span class="fl">5000</span></span>
+<span id="cb5-6"><a href="#cb5-6" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb5-7"><a href="#cb5-7" aria-hidden="true" tabindex="-1"></a>    <span class="co"># Two spectra</span></span>
+<span id="cb5-8"><a href="#cb5-8" aria-hidden="true" tabindex="-1"></a>    H1, wstar1, L1 <span class="op">=</span> <span class="fu">build_problem</span>(d, k <span class="op">-&gt;</span> <span class="fl">1.0</span> <span class="op">./</span> k)</span>
+<span id="cb5-9"><a href="#cb5-9" aria-hidden="true" tabindex="-1"></a>    H2, wstar2, L2 <span class="op">=</span> <span class="fu">build_problem</span>(d, k <span class="op">-&gt;</span> <span class="fl">1.0</span> <span class="op">./</span> (k <span class="op">.^</span> <span class="fl">2</span>))</span>
+<span id="cb5-10"><a href="#cb5-10" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb5-11"><a href="#cb5-11" aria-hidden="true" tabindex="-1"></a>    Fw  <span class="op">=</span> <span class="fu">run_gd</span>(H1, wstar1, L1, maxiter)</span>
+<span id="cb5-12"><a href="#cb5-12" aria-hidden="true" tabindex="-1"></a>    Fw2 <span class="op">=</span> <span class="fu">run_gd</span>(H2, wstar2, L2, maxiter)</span>
+<span id="cb5-13"><a href="#cb5-13" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb5-14"><a href="#cb5-14" aria-hidden="true" tabindex="-1"></a>    t <span class="op">=</span> <span class="fl">0</span><span class="op">:</span>maxiter<span class="op">-</span><span class="fl">1</span></span>
+<span id="cb5-15"><a href="#cb5-15" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb5-16"><a href="#cb5-16" aria-hidden="true" tabindex="-1"></a>    <span class="co"># Theoretical bound (avoid division by zero at t=0)</span></span>
+<span id="cb5-17"><a href="#cb5-17" aria-hidden="true" tabindex="-1"></a>    bound <span class="op">=</span> <span class="fu">similar</span>(Fw)</span>
+<span id="cb5-18"><a href="#cb5-18" aria-hidden="true" tabindex="-1"></a>    bound[<span class="fl">1</span>] <span class="op">=</span> <span class="cn">NaN</span></span>
+<span id="cb5-19"><a href="#cb5-19" aria-hidden="true" tabindex="-1"></a>    bound[<span class="fl">2</span><span class="op">:</span><span class="kw">end</span>] <span class="op">.=</span> (<span class="fl">1</span><span class="op">/</span><span class="fl">8</span>) <span class="op">*</span> <span class="fu">sum</span>(wstar2 <span class="op">.^</span> <span class="fl">2</span>) <span class="op">./</span> t[<span class="fl">2</span><span class="op">:</span><span class="kw">end</span>]</span>
+<span id="cb5-20"><a href="#cb5-20" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb5-21"><a href="#cb5-21" aria-hidden="true" tabindex="-1"></a>    fig <span class="op">=</span> <span class="fu">Figure</span>(size<span class="op">=</span>(<span class="fl">600</span>, <span class="fl">300</span>))</span>
+<span id="cb5-22"><a href="#cb5-22" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb5-23"><a href="#cb5-23" aria-hidden="true" tabindex="-1"></a>    ax1 <span class="op">=</span> <span class="fu">Axis</span>(fig[<span class="fl">1</span>, <span class="fl">1</span>],</span>
+<span id="cb5-24"><a href="#cb5-24" aria-hidden="true" tabindex="-1"></a>        xlabel <span class="op">=</span> L<span class="st">&quot;t&quot;</span>,</span>
+<span id="cb5-25"><a href="#cb5-25" aria-hidden="true" tabindex="-1"></a>        ylabel <span class="op">=</span> L<span class="st">&quot;\log_{10}[ F(</span><span class="sc">\t</span><span class="st">heta_t) - F(</span><span class="sc">\e</span><span class="st">ta_</span><span class="sc">\a</span><span class="st">st) ]&quot;</span>,</span>
+<span id="cb5-26"><a href="#cb5-26" aria-hidden="true" tabindex="-1"></a>        title <span class="op">=</span> <span class="st">&quot;Semilogarithmic scale&quot;</span>,</span>
+<span id="cb5-27"><a href="#cb5-27" aria-hidden="true" tabindex="-1"></a>        limits <span class="op">=</span> (<span class="fl">0</span>, <span class="fl">5000</span>, <span class="op">-</span><span class="fl">6</span>, <span class="fl">0</span>),</span>
+<span id="cb5-28"><a href="#cb5-28" aria-hidden="true" tabindex="-1"></a>        xticks <span class="op">=</span> <span class="fl">0</span><span class="op">:</span><span class="fl">2_000</span><span class="op">:</span><span class="fl">6_000</span>,</span>
+<span id="cb5-29"><a href="#cb5-29" aria-hidden="true" tabindex="-1"></a>        yticks <span class="op">=</span> <span class="op">-</span><span class="fl">6</span><span class="op">:</span><span class="fl">2</span><span class="op">:</span><span class="fl">0</span></span>
+<span id="cb5-30"><a href="#cb5-30" aria-hidden="true" tabindex="-1"></a>    )</span>
+<span id="cb5-31"><a href="#cb5-31" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb5-32"><a href="#cb5-32" aria-hidden="true" tabindex="-1"></a>    <span class="fu">lines!</span>(ax1, t, <span class="fu">log10</span>.(Fw), label <span class="op">=</span> L<span class="st">&quot;\lambda_k \sim 1/k&quot;</span>)</span>
+<span id="cb5-33"><a href="#cb5-33" aria-hidden="true" tabindex="-1"></a>    <span class="fu">lines!</span>(ax1, t, <span class="fu">log10</span>.(Fw2), label <span class="op">=</span> L<span class="st">&quot;\lambda_k \sim 1/k^2&quot;</span>, color<span class="op">=</span>red)</span>
+<span id="cb5-34"><a href="#cb5-34" aria-hidden="true" tabindex="-1"></a>    <span class="fu">lines!</span>(ax1, t, <span class="fu">log10</span>.(bound), label <span class="op">=</span> <span class="st">&quot;Bound&quot;</span>, linestyle<span class="op">=:</span>dash, color<span class="op">=:</span>black)</span>
+<span id="cb5-35"><a href="#cb5-35" aria-hidden="true" tabindex="-1"></a>    <span class="fu">axislegend</span>(ax1, position <span class="op">=:</span>lb)</span>
+<span id="cb5-36"><a href="#cb5-36" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb5-37"><a href="#cb5-37" aria-hidden="true" tabindex="-1"></a>    ax2 <span class="op">=</span> <span class="fu">Axis</span>(fig[<span class="fl">1</span>, <span class="fl">2</span>],</span>
+<span id="cb5-38"><a href="#cb5-38" aria-hidden="true" tabindex="-1"></a>        xlabel <span class="op">=</span> L<span class="st">&quot;\log_{10}(t)&quot;</span>,</span>
+<span id="cb5-39"><a href="#cb5-39" aria-hidden="true" tabindex="-1"></a>        ylabel <span class="op">=</span> L<span class="st">&quot;\log_{10}[F(</span><span class="sc">\t</span><span class="st">heta_t) - F(</span><span class="sc">\t</span><span class="st">heta_</span><span class="sc">\a</span><span class="st">st)]&quot;</span>,</span>
+<span id="cb5-40"><a href="#cb5-40" aria-hidden="true" tabindex="-1"></a>        title <span class="op">=</span> <span class="st">&quot;Full logarithmic scale&quot;</span>,</span>
+<span id="cb5-41"><a href="#cb5-41" aria-hidden="true" tabindex="-1"></a>        limits <span class="op">=</span> (<span class="fl">0</span>, <span class="fu">log10</span>(<span class="fl">5000</span>), <span class="op">-</span><span class="fl">6</span>, <span class="fl">0</span>),</span>
+<span id="cb5-42"><a href="#cb5-42" aria-hidden="true" tabindex="-1"></a>        yticks <span class="op">=</span> <span class="op">-</span><span class="fl">6</span><span class="op">:</span><span class="fl">2</span><span class="op">:</span><span class="fl">0</span></span>
+<span id="cb5-43"><a href="#cb5-43" aria-hidden="true" tabindex="-1"></a>    )</span>
+<span id="cb5-44"><a href="#cb5-44" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb5-45"><a href="#cb5-45" aria-hidden="true" tabindex="-1"></a>    <span class="fu">lines!</span>(ax2, <span class="fu">log10</span>.(t), <span class="fu">log10</span>.(Fw),label <span class="op">=</span> L<span class="st">&quot;\lambda_k \sim 1/k&quot;</span>)</span>
+<span id="cb5-46"><a href="#cb5-46" aria-hidden="true" tabindex="-1"></a>    <span class="fu">lines!</span>(ax2, <span class="fu">log10</span>.(t), <span class="fu">log10</span>.(Fw2),label <span class="op">=</span> L<span class="st">&quot;\lambda_k \sim 1/k^2&quot;</span>, color<span class="op">=</span>red)</span>
+<span id="cb5-47"><a href="#cb5-47" aria-hidden="true" tabindex="-1"></a>    <span class="fu">lines!</span>(ax2, <span class="fu">log10</span>.(t), <span class="fu">log10</span>.(bound),label <span class="op">=</span> <span class="st">&quot;Bound&quot;</span>, linestyle<span class="op">=:</span>dash, color<span class="op">=:</span>black)</span>
+<span id="cb5-48"><a href="#cb5-48" aria-hidden="true" tabindex="-1"></a>    <span class="fu">axislegend</span>(ax2, position <span class="op">=:</span>lb)</span>
+<span id="cb5-49"><a href="#cb5-49" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb5-50"><a href="#cb5-50" aria-hidden="true" tabindex="-1"></a>    fig</span>
+<span id="cb5-51"><a href="#cb5-51" aria-hidden="true" tabindex="-1"></a><span class="kw">end</span></span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
 </div>
 <div id="16" class="cell" data-execution_count="1">
-<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb6"><pre class="sourceCode julia code-with-copy"><code class="sourceCode julia"><span id="cb6-1"><a href="#cb6-1" aria-hidden="true" tabindex="-1"></a><span class="kw">function</span> <span class="fu">plot_gd_comparison</span>()</span>
-<span id="cb6-2"><a href="#cb6-2" aria-hidden="true" tabindex="-1"></a>    <span class="bu">Random</span>.<span class="fu">seed!</span>(<span class="fl">1</span>)</span>
-<span id="cb6-3"><a href="#cb6-3" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb6-4"><a href="#cb6-4" aria-hidden="true" tabindex="-1"></a>    d <span class="op">=</span> <span class="fl">1000</span></span>
-<span id="cb6-5"><a href="#cb6-5" aria-hidden="true" tabindex="-1"></a>    maxiter <span class="op">=</span> <span class="fl">5000</span></span>
-<span id="cb6-6"><a href="#cb6-6" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb6-7"><a href="#cb6-7" aria-hidden="true" tabindex="-1"></a>    <span class="co"># Two spectra</span></span>
-<span id="cb6-8"><a href="#cb6-8" aria-hidden="true" tabindex="-1"></a>    H1, wstar1, L1 <span class="op">=</span> <span class="fu">build_problem</span>(d, k <span class="op">-&gt;</span> <span class="fl">1.0</span> <span class="op">./</span> k)</span>
-<span id="cb6-9"><a href="#cb6-9" aria-hidden="true" tabindex="-1"></a>    H2, wstar2, L2 <span class="op">=</span> <span class="fu">build_problem</span>(d, k <span class="op">-&gt;</span> <span class="fl">1.0</span> <span class="op">./</span> (k <span class="op">.^</span> <span class="fl">2</span>))</span>
-<span id="cb6-10"><a href="#cb6-10" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb6-11"><a href="#cb6-11" aria-hidden="true" tabindex="-1"></a>    Fw  <span class="op">=</span> <span class="fu">run_gd</span>(H1, wstar1, L1, maxiter)</span>
-<span id="cb6-12"><a href="#cb6-12" aria-hidden="true" tabindex="-1"></a>    Fw2 <span class="op">=</span> <span class="fu">run_gd</span>(H2, wstar2, L2, maxiter)</span>
-<span id="cb6-13"><a href="#cb6-13" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb6-14"><a href="#cb6-14" aria-hidden="true" tabindex="-1"></a>    t <span class="op">=</span> <span class="fl">0</span><span class="op">:</span>maxiter<span class="op">-</span><span class="fl">1</span></span>
-<span id="cb6-15"><a href="#cb6-15" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb6-16"><a href="#cb6-16" aria-hidden="true" tabindex="-1"></a>    <span class="co"># Theoretical bound (avoid division by zero at t=0)</span></span>
-<span id="cb6-17"><a href="#cb6-17" aria-hidden="true" tabindex="-1"></a>    bound <span class="op">=</span> <span class="fu">similar</span>(Fw)</span>
-<span id="cb6-18"><a href="#cb6-18" aria-hidden="true" tabindex="-1"></a>    bound[<span class="fl">1</span>] <span class="op">=</span> <span class="cn">NaN</span></span>
-<span id="cb6-19"><a href="#cb6-19" aria-hidden="true" tabindex="-1"></a>    bound[<span class="fl">2</span><span class="op">:</span><span class="kw">end</span>] <span class="op">.=</span> (<span class="fl">1</span><span class="op">/</span><span class="fl">8</span>) <span class="op">*</span> <span class="fu">sum</span>(wstar2 <span class="op">.^</span> <span class="fl">2</span>) <span class="op">./</span> t[<span class="fl">2</span><span class="op">:</span><span class="kw">end</span>]</span>
-<span id="cb6-20"><a href="#cb6-20" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb6-21"><a href="#cb6-21" aria-hidden="true" tabindex="-1"></a>    fig <span class="op">=</span> <span class="fu">Figure</span>(size<span class="op">=</span>(<span class="fl">600</span>, <span class="fl">300</span>))</span>
-<span id="cb6-22"><a href="#cb6-22" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb6-23"><a href="#cb6-23" aria-hidden="true" tabindex="-1"></a>    ax1 <span class="op">=</span> <span class="fu">Axis</span>(fig[<span class="fl">1</span>, <span class="fl">1</span>],</span>
-<span id="cb6-24"><a href="#cb6-24" aria-hidden="true" tabindex="-1"></a>        xlabel <span class="op">=</span> L<span class="st">&quot;t&quot;</span>,</span>
-<span id="cb6-25"><a href="#cb6-25" aria-hidden="true" tabindex="-1"></a>        ylabel <span class="op">=</span> L<span class="st">&quot;\log_{10}[ F(</span><span class="sc">\t</span><span class="st">heta_t) - F(</span><span class="sc">\e</span><span class="st">ta_</span><span class="sc">\a</span><span class="st">st) ]&quot;</span>,</span>
-<span id="cb6-26"><a href="#cb6-26" aria-hidden="true" tabindex="-1"></a>        title <span class="op">=</span> <span class="st">&quot;Semilogarithmic scale&quot;</span>,</span>
-<span id="cb6-27"><a href="#cb6-27" aria-hidden="true" tabindex="-1"></a>        limits <span class="op">=</span> (<span class="fl">0</span>, <span class="fl">5000</span>, <span class="op">-</span><span class="fl">6</span>, <span class="fl">0</span>),</span>
-<span id="cb6-28"><a href="#cb6-28" aria-hidden="true" tabindex="-1"></a>        xticks <span class="op">=</span> <span class="fl">0</span><span class="op">:</span><span class="fl">2_000</span><span class="op">:</span><span class="fl">6_000</span>,</span>
-<span id="cb6-29"><a href="#cb6-29" aria-hidden="true" tabindex="-1"></a>        yticks <span class="op">=</span> <span class="op">-</span><span class="fl">6</span><span class="op">:</span><span class="fl">2</span><span class="op">:</span><span class="fl">0</span></span>
-<span id="cb6-30"><a href="#cb6-30" aria-hidden="true" tabindex="-1"></a>    )</span>
-<span id="cb6-31"><a href="#cb6-31" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb6-32"><a href="#cb6-32" aria-hidden="true" tabindex="-1"></a>    <span class="fu">lines!</span>(ax1, t, <span class="fu">log10</span>.(Fw), label <span class="op">=</span> L<span class="st">&quot;\lambda_k \sim 1/k&quot;</span>)</span>
-<span id="cb6-33"><a href="#cb6-33" aria-hidden="true" tabindex="-1"></a>    <span class="fu">lines!</span>(ax1, t, <span class="fu">log10</span>.(Fw2), label <span class="op">=</span> L<span class="st">&quot;\lambda_k \sim 1/k^2&quot;</span>, color<span class="op">=</span>red)</span>
-<span id="cb6-34"><a href="#cb6-34" aria-hidden="true" tabindex="-1"></a>    <span class="fu">lines!</span>(ax1, t, <span class="fu">log10</span>.(bound), label <span class="op">=</span> <span class="st">&quot;Bound&quot;</span>, linestyle<span class="op">=:</span>dash, color<span class="op">=:</span>black)</span>
-<span id="cb6-35"><a href="#cb6-35" aria-hidden="true" tabindex="-1"></a>    <span class="fu">axislegend</span>(ax1, position <span class="op">=:</span>lb)</span>
-<span id="cb6-36"><a href="#cb6-36" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb6-37"><a href="#cb6-37" aria-hidden="true" tabindex="-1"></a>    ax2 <span class="op">=</span> <span class="fu">Axis</span>(fig[<span class="fl">1</span>, <span class="fl">2</span>],</span>
-<span id="cb6-38"><a href="#cb6-38" aria-hidden="true" tabindex="-1"></a>        xlabel <span class="op">=</span> L<span class="st">&quot;\log_{10}(t)&quot;</span>,</span>
-<span id="cb6-39"><a href="#cb6-39" aria-hidden="true" tabindex="-1"></a>        ylabel <span class="op">=</span> L<span class="st">&quot;\log_{10}[F(</span><span class="sc">\t</span><span class="st">heta_t) - F(</span><span class="sc">\t</span><span class="st">heta_</span><span class="sc">\a</span><span class="st">st)]&quot;</span>,</span>
-<span id="cb6-40"><a href="#cb6-40" aria-hidden="true" tabindex="-1"></a>        title <span class="op">=</span> <span class="st">&quot;Full logarithmic scale&quot;</span>,</span>
-<span id="cb6-41"><a href="#cb6-41" aria-hidden="true" tabindex="-1"></a>        limits <span class="op">=</span> (<span class="fl">0</span>, <span class="fu">log10</span>(<span class="fl">5000</span>), <span class="op">-</span><span class="fl">6</span>, <span class="fl">0</span>),</span>
-<span id="cb6-42"><a href="#cb6-42" aria-hidden="true" tabindex="-1"></a>        yticks <span class="op">=</span> <span class="op">-</span><span class="fl">6</span><span class="op">:</span><span class="fl">2</span><span class="op">:</span><span class="fl">0</span></span>
-<span id="cb6-43"><a href="#cb6-43" aria-hidden="true" tabindex="-1"></a>    )</span>
-<span id="cb6-44"><a href="#cb6-44" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb6-45"><a href="#cb6-45" aria-hidden="true" tabindex="-1"></a>    <span class="fu">lines!</span>(ax2, <span class="fu">log10</span>.(t), <span class="fu">log10</span>.(Fw),label <span class="op">=</span> L<span class="st">&quot;\lambda_k \sim 1/k&quot;</span>)</span>
-<span id="cb6-46"><a href="#cb6-46" aria-hidden="true" tabindex="-1"></a>    <span class="fu">lines!</span>(ax2, <span class="fu">log10</span>.(t), <span class="fu">log10</span>.(Fw2),label <span class="op">=</span> L<span class="st">&quot;\lambda_k \sim 1/k^2&quot;</span>, color<span class="op">=</span>red)</span>
-<span id="cb6-47"><a href="#cb6-47" aria-hidden="true" tabindex="-1"></a>    <span class="fu">lines!</span>(ax2, <span class="fu">log10</span>.(t), <span class="fu">log10</span>.(bound),label <span class="op">=</span> <span class="st">&quot;Bound&quot;</span>, linestyle<span class="op">=:</span>dash, color<span class="op">=:</span>black)</span>
-<span id="cb6-48"><a href="#cb6-48" aria-hidden="true" tabindex="-1"></a>    <span class="fu">axislegend</span>(ax2, position <span class="op">=:</span>lb)</span>
-<span id="cb6-49"><a href="#cb6-49" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb6-50"><a href="#cb6-50" aria-hidden="true" tabindex="-1"></a>    fig</span>
-<span id="cb6-51"><a href="#cb6-51" aria-hidden="true" tabindex="-1"></a><span class="kw">end</span></span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
-</div>
-<div id="18" class="cell" data-execution_count="1">
-<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb7"><pre class="sourceCode julia code-with-copy"><code class="sourceCode julia"><span id="cb7-1"><a href="#cb7-1" aria-hidden="true" tabindex="-1"></a><span class="fu">plot_gd_comparison</span>()</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb6"><pre class="sourceCode julia code-with-copy"><code class="sourceCode julia"><span id="cb6-1"><a href="#cb6-1" aria-hidden="true" tabindex="-1"></a><span class="fu">plot_gd_comparison</span>()</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
 <div class="cell-output cell-output-display" data-execution_count="1">
 <div>
 <figure class="figure">
@@ -2351,7 +2340,6 @@ vertical-align: -.125em;
 </div>
 </div>
 </div>
-</section>
 
 </main>
 <!-- /main column -->

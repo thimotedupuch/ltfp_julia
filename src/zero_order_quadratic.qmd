@@ -47,7 +47,9 @@ maxiter = 100000
 deltas = [0.01, 0.1, 10.0]
 nrep = 10
 
-function simulate_zero_order(H, L, theta_ast, sigma, maxiter, deltas, nrep)
+function simulate_zero_order(
+        H, L, theta_ast, sigma, maxiter, deltas, nrep
+    )
     d = length(theta_ast)
     val_zero = zeros(length(deltas), maxiter, nrep)
     val_zero_ave = zeros(length(deltas), maxiter, nrep)
@@ -77,13 +79,15 @@ function simulate_zero_order(H, L, theta_ast, sigma, maxiter, deltas, nrep)
 end
 
 sigma_1 = 0.01
-val_zero_1, val_zero_ave_1 = simulate_zero_order(H, L, theta_ast, sigma_1, maxiter, deltas, nrep)
+val_zero_1, val_zero_ave_1 = simulate_zero_order(
+    H, L, theta_ast, sigma_1, maxiter, deltas, nrep
+)
 
 sigma_2 = 0.1
-val_zero_2, val_zero_ave_2 = simulate_zero_order(H, L, theta_ast, sigma_2, maxiter, deltas, nrep)
-```
+val_zero_2, val_zero_ave_2 = simulate_zero_order(
+    H, L, theta_ast, sigma_2, maxiter, deltas, nrep
+)
 
-```{julia}
 fig = Figure(size = (1200, 800))
 
 # Row 1: sigma = 0.01

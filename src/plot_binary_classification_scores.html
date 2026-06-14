@@ -7,7 +7,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes">
 
 <meta name="author" content="Thimoté Dupuch">
-<meta name="dcterms.date" content="2026-04-03">
+<meta name="dcterms.date" content="2026-06-14">
 
 <title>Optimal score functions</title>
 <style>
@@ -2226,7 +2226,7 @@ vertical-align: -.125em;
     <div>
     <div class="quarto-title-meta-heading">Published</div>
     <div class="quarto-title-meta-contents">
-      <p class="date">April 3, 2026</p>
+      <p class="date">June 14, 2026</p>
     </div>
   </div>
   
@@ -2244,8 +2244,7 @@ vertical-align: -.125em;
 <div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb1"><pre class="sourceCode julia code-with-copy"><code class="sourceCode julia"><span id="cb1-1"><a href="#cb1-1" aria-hidden="true" tabindex="-1"></a><span class="im">using</span> <span class="bu">LinearAlgebra</span>, <span class="bu">Random</span>, <span class="bu">Statistics</span>, <span class="bu">CairoMakie</span></span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
 </div>
 <div id="8" class="cell" data-execution_count="1">
-<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb2"><pre class="sourceCode julia code-with-copy"><code class="sourceCode julia"><span id="cb2-1"><a href="#cb2-1" aria-hidden="true" tabindex="-1"></a>colors <span class="op">=</span> Makie.<span class="fu">wong_colors</span>()</span>
-<span id="cb2-2"><a href="#cb2-2" aria-hidden="true" tabindex="-1"></a>blue, orange, green, red <span class="op">=</span> colors[<span class="fl">1</span>], colors[<span class="fl">2</span>], colors[<span class="fl">3</span>], colors[<span class="fl">6</span>]</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb2"><pre class="sourceCode julia code-with-copy"><code class="sourceCode julia"><span id="cb2-1"><a href="#cb2-1" aria-hidden="true" tabindex="-1"></a>blue, orange, green, pink, teal, red, yellow <span class="op">=</span> Makie.<span class="fu">wong_colors</span>()</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
 </div>
 <div id="10" class="cell" data-execution_count="1">
 <div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb3"><pre class="sourceCode julia code-with-copy"><code class="sourceCode julia"><span id="cb3-1"><a href="#cb3-1" aria-hidden="true" tabindex="-1"></a><span class="fu">gaussian_pdf</span>(x, μ, σ) <span class="op">=</span> <span class="fl">1</span><span class="op">/</span>(<span class="fu">sqrt</span>(<span class="fl">2</span>π) <span class="op">*</span> σ) <span class="op">.*</span> <span class="fu">exp</span>.(<span class="fu">-</span>((x <span class="op">.-</span> μ)<span class="op">.^</span><span class="fl">2</span>) <span class="op">./</span> (<span class="fl">2</span>σ<span class="op">^</span><span class="fl">2</span>))</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
@@ -2259,7 +2258,7 @@ vertical-align: -.125em;
 <span id="cb4-6"><a href="#cb4-6" aria-hidden="true" tabindex="-1"></a>    μ<span class="fl">2</span>, σ<span class="fl">2</span> <span class="op">=</span> <span class="op">-</span><span class="fl">2.0</span>, <span class="fl">1.0</span></span>
 <span id="cb4-7"><a href="#cb4-7" aria-hidden="true" tabindex="-1"></a></span>
 <span id="cb4-8"><a href="#cb4-8" aria-hidden="true" tabindex="-1"></a>    pdf1 <span class="op">=</span> <span class="fu">gaussian_pdf</span>(x, μ<span class="fl">1</span>, σ<span class="fl">1</span>)</span>
-<span id="cb4-9"><a href="#cb4-9" aria-hidden="true" tabindex="-1"></a>    pdf2 <span class="op">=</span> <span class="fu">gaussian_pdf</span>(x, μ<span class="fl">2</span>, σ<span class="fl">2</span>)  </span>
+<span id="cb4-9"><a href="#cb4-9" aria-hidden="true" tabindex="-1"></a>    pdf2 <span class="op">=</span> <span class="fu">gaussian_pdf</span>(x, μ<span class="fl">2</span>, σ<span class="fl">2</span>)</span>
 <span id="cb4-10"><a href="#cb4-10" aria-hidden="true" tabindex="-1"></a>    η <span class="op">=</span> pdf1 <span class="op">./</span> (pdf1 <span class="op">.+</span> pdf2) <span class="co"># Posterior probability</span></span>
 <span id="cb4-11"><a href="#cb4-11" aria-hidden="true" tabindex="-1"></a></span>
 <span id="cb4-12"><a href="#cb4-12" aria-hidden="true" tabindex="-1"></a>    fig <span class="op">=</span> <span class="fu">Figure</span>(size<span class="op">=</span>(<span class="fl">800</span>, <span class="fl">400</span>))</span>

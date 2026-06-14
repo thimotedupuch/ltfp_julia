@@ -115,7 +115,10 @@ axislegend(ax1, [elem_lower, elem_upper], ["lower", "upper"])
 
 ax2 = Axis(fig[1, 2], xlabel="t", ylabel="regret", title="regret")
 lines!(ax2, 1:maxt, perf, color=red, linewidth=2, label="observation")
-lines!(ax2, 1:maxt, log.(1:maxt) .* a .+ b, color=blue, linewidth=2, label="fit: a+b*log(t)")
+lines!(
+    ax2, 1:maxt,  log.(1:maxt) .* a .+ b,
+    color=blue, linewidth=2, label="fit: a+b*log(t)"
+)
 axislegend(ax2, position=:rb)
 xlims!(ax2, 1, maxt)
 ylims!(ax2, 0, 220)

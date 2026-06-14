@@ -90,7 +90,9 @@ function plot_polynomial_regression(; seed=1, std_noise=0.25, kmax=5)
                 lines!(ax, Xgrid, Ypred, color=red, linewidth=3)
                 train_err = mean((predict(Xsample, w) .- Ysample) .^ 2)
                 test_err  = std_noise^2 + mean((Ypred .- Ygrid) .^ 2)
-                ax.title = "n=$n  train=$(round(train_err, digits=2))  test=$(round(test_err, digits=2))"
+                train = round(train_err, digits=2)
+                test = round(test_err, digits=2)
+                ax.title = "n=$n  train=$test  test=$test"
             end
         end
 
@@ -119,20 +121,22 @@ both evaluated at the *final* degree (kmax).
 function collect_errors(ns, kmax, std_noise, nrep, rng, Xgrid, Ygrid)
     insample_err = zeros(nrep, length(ns))
     test_err     = zeros(nrep, length(ns))
- 
+
     for irep in 1:nrep, (in_, n) in enumerate(ns)
         Xsample, Ysample = sample_data(n, std_noise, rng)
         w     = fit_polynomial(Xsample, Ysample, kmax)
         Ypred = predict(Xgrid, w)
- 
-        insample_err[irep, in_] = mean((predict(Xsample, w) .- true_fn(Xsample)) .^ 2)
-        test_err[irep, in_]     = std_noise^2 + mean((Ypred .- Ygrid) .^ 2)
+
+        insample_err[irep, in_] = mean(
+            (predict(Xsample, w) .- true_fn(Xsample)) .^ 2
+        )
+        test_err[irep, in_] = std_noise^2 + mean((Ypred .- Ygrid) .^ 2)
     end
- 
+
     return insample_err, test_err
 end
 ```
- 
+
 ```{julia}
 #| output : false
 function errorbar_loglog!(ax, log_ns, values; label)
@@ -141,7 +145,7 @@ function errorbar_loglog!(ax, log_ns, values; label)
     log_μ  = log10.(μ)
     lo     = log_μ .- log10.(max.(μ .- σ, 1e-12))
     hi     = log10.(μ .+ σ) .- log_μ
- 
+
     errorbars!(ax, log_ns, log_μ, lo, hi, whiskerwidth=6)
     lines!(ax, log_ns, log_μ, label=label, linewidth=2)
 end
@@ -149,19 +153,23 @@ end
 
 ```{julia}
 #| output : false
-function plot_excess_risk(; seed=1, std_noise=0.25, kmax=5, nrep=32)
+function plot_excess_risk(
+    ; seed=1, std_noise=0.25, kmax=5, nrep=32
+)
     rng   = MersenneTwister(seed)
     ns    = round.(Int, 10 .^ (1:0.25:5))
     Xgrid = collect(-1:0.001:1)
     Ygrid = true_fn(Xgrid)
- 
-    insample_err, test_err = collect_errors(ns, kmax, std_noise, nrep, rng, Xgrid, Ygrid)
- 
+
+    insample_err, test_err = collect_errors(
+        ns, kmax, std_noise, nrep, rng, Xgrid, Ygrid
+    )
+
     log_ns      = log10.(ns)
     theory_line = log10.(std_noise^2 * (kmax + 1) ./ ns)
- 
+
     fig = Figure(size=(700, 350))
- 
+
     for (col, (values, excess_fn, title)) in enumerate([
         (insample_err, identity,              "Fixed design"),
         (test_err,     x -> x .- std_noise^2, "Random design"),
@@ -172,19 +180,21 @@ function plot_excess_risk(; seed=1, std_noise=0.25, kmax=5, nrep=32)
             ylabel = L"\log_{10} \text{(excess risk)}",
             limits = ((1, 5), (-6, 4)),
         )
- 
+
         adjusted = excess_fn(values)
         errorbar_loglog!(ax, log_ns, adjusted; label="Excess risk")
-        lines!(ax, log_ns, theory_line, color=red, linewidth=2, label=L"\sigma^2 d/n")
+        lines!(
+            ax, log_ns, theory_line, color=red, linewidth=2, label=L"\sigma^2 d/n"
+        )
         axislegend(ax)
     end
- 
+
     return fig
 end
 ```
 
 
-  
+
 ```{julia}
 fig = plot_excess_risk()
 ```

@@ -1,0 +1,116 @@
+---
+title : "Bagging"
+author : "Thimoté Dupuch"
+date : today
+format:
+  html:
+    embed-resources: true
+    theme: zephyr
+engine: julia
+---
+
+```{julia}
+#| echo : false
+#| output : false
+using Pkg; Pkg.activate(".."); Pkg.status()
+```
+
+```{julia}
+#| output : false
+using CairoMakie, Statistics, Random, LinearAlgebra, SpecialFunctions
+```
+
+```{julia}
+#| output : false
+#| echo : false
+CairoMakie.set_theme!(theme_latexfonts())
+CairoMakie.activate!(type = "svg")
+```
+
+```{julia}
+#| output : false
+blue, orange, green, pink, teal, red, yellow = Makie.wong_colors()
+```
+
+```{julia}
+function boosting_lasso(X, y, Xtest, ytest, maxiter)
+    n, d = size(X)
+    beta = zeros(d)
+    u = zeros(n)
+    betas = zeros(d, maxiter)
+    perftrain = zeros(maxiter)
+    perftest = zeros(maxiter)
+
+    for iter in 1:maxiter
+        betas[:, iter] = beta
+        perftrain[iter] = mean((y .- X * beta).^2)
+        perftest[iter] = mean((ytest .- Xtest * beta).^2)
+
+        grad = u .- y
+        Xtg = X' * grad
+        b = argmax(abs.(Xtg))
+
+        betaloc = zeros(d)
+        betaloc[b] = X[:, b]' * grad > 0 ? -1.0 : 1.0
+
+        uloc = X * betaloc
+        alpha = -dot(uloc, grad) / dot(uloc, uloc)
+
+        u .+= uloc .* alpha
+        beta .+= betaloc .* alpha
+    end
+    return perftrain, perftest, betas
+end
+
+# --- Simulation ---
+
+d, n, ntest, k = 1000, 100, 1000, 5
+sigma_noise = 0.5
+maxiter = 50
+
+X = randn(n, d)
+Xtest = randn(ntest, d)
+beta_ast = zeros(d)
+beta_ast[1:k] = sign.(randn(k))
+
+# Sparse case
+y = X * beta_ast .+ sigma_noise * randn(n)
+ytest = Xtest * beta_ast .+ sigma_noise * randn(ntest)
+train_sp, test_sp, betas_sp = boosting_lasso(X, y, Xtest, ytest, maxiter)
+
+# Non-sparse case
+temp = randn(d, d)
+U = eigvecs(Symmetric(temp + temp'))
+beta_ast_ns = U * beta_ast
+
+y = X * beta_ast_ns .+ sigma_noise * randn(n)
+ytest = Xtest * beta_ast_ns .+ sigma_noise * randn(ntest)
+train_ns, test_ns, betas_ns = boosting_lasso(X, y, Xtest, ytest, maxiter)
+
+# --- Plotting ---
+
+iters = 0:maxiter-1
+fig = Figure(size=(1200, 1000))
+
+ax1 = Axis(fig[1, 1], title="Errors - sparse", xlabel="iterations", ylabel="log(errors)")
+lines!(ax1, iters, log.(train_sp), color=blue, linewidth=2, label="train")
+lines!(ax1, iters, log.(test_sp), color=red, linewidth=2, label="test")
+axislegend(ax1, position=:rt)
+xlims!(ax1, 0, maxiter-1); ylims!(ax1, -5, 3)
+
+ax2 = Axis(fig[1, 2], title="Weights - sparse", xlabel="iterations", ylabel="weights")
+lines!(ax2, iters, permutedims(betas_sp), linewidth=2) # Transposed to 50x1000
+xlims!(ax2, 0, maxiter-1); ylims!(ax2, -1.2, 1.2)
+
+ax3 = Axis(fig[2, 1], title="Errors - non sparse", xlabel="iterations", ylabel="log(errors)")
+lines!(ax3, iters, log.(train_ns), color=blue, linewidth=2, label="train")
+lines!(ax3, iters, log.(test_ns), color=red, linewidth=2, label="test")
+axislegend(ax3, position=:rt)
+xlims!(ax3, 0, maxiter-1); ylims!(ax3, -5, 3)
+
+ax4 = Axis(fig[2, 2], title="Weights - non sparse", xlabel="iterations", ylabel="weights")
+lines!(ax4, iters, permutedims(betas_ns), linewidth=2) # Transposed to 50x1000
+xlims!(ax4, 0, maxiter-1); ylims!(ax4, -1.2, 1.2)
+
+fig
+```

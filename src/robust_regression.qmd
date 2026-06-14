@@ -67,9 +67,7 @@ min_idx = argmin(robust_error)
 lambda_best = lambdas[min_idx]
 alpha = (K + n * lambda_best * I) \ y
 ypredtest_sq = Ktest * alpha
-```
 
-```{julia}
 # robust loss
 square_error_rob = zeros(length(lambdas))
 robust_error_rob = zeros(length(lambdas))
@@ -93,8 +91,6 @@ for ilambda = 1:length(lambdas)
     robust_error_rob[ilambda] = mean(1 .- exp.(-(ypredtest_rob_temp .- ytest).^2))
 end
 
-# In the original MATLAB script, `robust_error` from the square loss is used to choose lambda
-# for the robust loss plotting. We follow the exact logic here.
 min_idx_rob = argmin(robust_error)
 lambda_best_rob = lambdas[min_idx_rob]
 
@@ -115,15 +111,15 @@ end
 fig = Figure(size=(1000, 500))
 
 ax1 = Axis(fig[1, 1], xlabel="x", ylabel="y", title="square loss")
-lines!(ax1, xtest, ytest, color=:red, linewidth=2, label="target")
+lines!(ax1, xtest, ytest, color=red, linewidth=2, label="target")
 lines!(ax1, xtest, ypredtest_sq, color=:black, linewidth=2, label="prediction")
-scatter!(ax1, x, y, color=:blue, marker='x', markersize=10)
+scatter!(ax1, x, y, color=blue, marker=:cross, markersize=10)
 axislegend(ax1)
 
 ax2 = Axis(fig[1, 2], xlabel="x", ylabel="y", title="robust loss")
-lines!(ax2, xtest, ytest, color=:red, linewidth=2, label="target")
+lines!(ax2, xtest, ytest, color=red, linewidth=2, label="target")
 lines!(ax2, xtest, ypredtest_rob, color=:black, linewidth=2, label="prediction")
-scatter!(ax2, x, y, color=:blue, marker='x', markersize=10)
+scatter!(ax2, x, y, color=blue, marker=:cross, markersize=10)
 axislegend(ax2)
 
 fig

@@ -31,20 +31,10 @@ CairoMakie.activate!(type = "svg")
 ```
 
 ```{julia}
+#| output : false
 blue, orange, green, pink, teal, red, yellow = Makie.wong_colors()
 ```
 
-
-```{julia}
-#| output : false
-
-using LinearAlgebra
-using Random
-using CairoMakie
-```
-
-
-##### Build quadratic problem
 ```{julia}
 #| output : false
 function build_problem(d, spectrum_fn)
@@ -64,7 +54,6 @@ function build_problem(d, spectrum_fn)
     return H, wstar, L
 end
 ```
-##### Gradient descent
 ```{julia}
 #| output : false
 function run_gd(H, wstar, L, maxiter)

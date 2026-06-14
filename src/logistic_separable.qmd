@@ -38,7 +38,10 @@ Random.seed!(1)
 d = 2
 n = 100
 y = [ones(n ÷ 2); -ones(n ÷ 2)]
-X = [-ones(n ÷ 2, 1) -ones(n ÷ 2, 1); ones(n ÷ 2, 1) ones(n ÷ 2, 1)] .+ randn(n, 2) ./ 2
+X = [
+    -ones(n ÷ 2, 1) -ones(n ÷ 2, 1);
+    ones(n ÷ 2, 1) ones(n ÷ 2, 1)
+    ] .+ randn(n, 2) ./ 2
 
 X_ext = [X ones(n)]
 d = d + 1
@@ -68,12 +71,24 @@ fig = Figure(size=(1200, 600))
 for (i, it) in enumerate(itertoplot)
     row = (i - 1) ÷ 6 + 1
     col = (i - 1) % 6 + 1
-    ax = Axis(fig[row, col], title="t = $it", limits=(-4, 4, -4, 4),
-              xticklabelsvisible=false, yticklabelsvisible=false,
-              xticksvisible=false, yticksvisible=false)
+    ax = Axis(
+        fig[row, col],
+        title="t = $it",
+        limits=(-4, 4, -4, 4),
+        xticklabelsvisible=false,
+        yticklabelsvisible=false,
+        xticksvisible=false,
+        yticksvisible=false
+    )
 
-    scatter!(ax, X[y .== 1, 1], X[y .== 1, 2], marker=:cross, color=blue, markersize=10)
-    scatter!(ax, X[y .== -1, 1], X[y .== -1, 2], marker=:cross, color=red, markersize=10)
+    scatter!(
+        ax, X[y .== 1, 1], X[y .== 1, 2],
+        marker=:cross, color=blue, markersize=10
+    )
+    scatter!(
+        ax, X[y .== -1, 1], X[y .== -1, 2],
+        marker=:cross, color=red, markersize=10
+    )
 
     Xleft, Xright = -10.0, 10.0
 
@@ -85,7 +100,10 @@ for (i, it) in enumerate(itertoplot)
     # Boundary at end
     Yleft_end = -(ws[3, end] + Xleft * ws[1, end]) / ws[2, end]
     Yright_end = -(ws[3, end] + Xright * ws[1, end]) / ws[2, end]
-    lines!(ax, [Xleft, Xright], [Yleft_end, Yright_end], color=:black, linestyle=:dot, linewidth=2)
+    lines!(
+        ax, [Xleft, Xright], [Yleft_end, Yright_end],
+        color=:black, linestyle=:dot, linewidth=2
+    )
 end
 
 fig
