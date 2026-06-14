@@ -1,0 +1,125 @@
+---
+title : "UCB"
+author : "Thimoté Dupuch"
+date : today
+format:
+  html:
+    embed-resources: true
+    theme: zephyr
+engine: julia
+---
+
+```{julia}
+#| echo : false
+#| output : false
+using Pkg; Pkg.activate(".."); Pkg.status()
+```
+
+```{julia}
+#| output : false
+using CairoMakie, Statistics, Random
+```
+
+```{julia}
+#| output : false
+#| echo : false
+CairoMakie.set_theme!(theme_latexfonts())
+CairoMakie.activate!(type = "svg")
+```
+
+```{julia}
+#| output : false
+colors = Makie.wong_colors()
+blue, orange, red = colors[1], colors[2], colors[6]
+```
+
+```{julia}
+seed = 4
+Random.seed!(seed)
+
+nrep = 1
+k = 10
+maxt = 10_000
+means = rand(k)
+rewards = zeros(maxt, nrep)
+
+upper_bounds = zeros(k, maxt)
+lower_bounds = zeros(k, maxt)
+
+irep = 1
+rewards_per_arm = Float64.(rand(k) .< means)
+rewards[1:k, irep] = rewards_per_arm
+ns = ones(k)
+rho = 2 * log(k)
+upper_bounds[:, k] = rewards_per_arm ./ ns .+ sqrt.(0.5 * rho ./ ns)
+lower_bounds[:, k] = rewards_per_arm ./ ns .- sqrt.(0.5 * rho ./ ns)
+
+for t = k+1:maxt
+    arm = argmax(upper_bounds[:, t-1])
+    reward = Float64(rand() < means[arm])
+    rewards[t, irep] = reward
+    rewards_per_arm[arm] += reward
+    ns[arm] += 1
+    rho = 2 * log(t)
+    upper_bounds[:, t] = rewards_per_arm ./ ns .+ sqrt.(0.5 * rho ./ ns)
+    lower_bounds[:, t] = rewards_per_arm ./ ns .- sqrt.(0.5 * rho ./ ns)
+end
+```
+
+```{julia}
+nrep = 100
+k = 10
+maxt = 10_000
+means = rand(k)
+rewards = zeros(maxt, nrep)
+
+for irep = 1:nrep
+    rewards_per_arm = Float64.(rand(k) .< means)
+    rewards[1:k, irep] = rewards_per_arm
+    ns = ones(k)
+    rho = 2 * log(k)
+    upper_bounds_2 = rewards_per_arm ./ ns .+ sqrt.(0.5 * rho ./ ns)
+    
+    for t = k+1:maxt
+        arm = argmax(upper_bounds_2)
+        reward = Float64(rand() < means[arm])
+        rewards[t, irep] = reward
+        rewards_per_arm[arm] += reward
+        ns[arm] += 1
+        rho = 2 * log(t)
+        upper_bounds_2 = rewards_per_arm ./ ns .+ sqrt.(0.5 * rho ./ ns)
+    end
+end
+
+regret_matrix = cumsum(maximum(means) .- rewards, dims=1)
+perf = vec(mean(regret_matrix, dims=2))
+stdperf = vec(std(regret_matrix, dims=2))
+
+t_fit = Int(maxt/10):maxt
+x_fit = log.(t_fit)
+X = hcat(x_fit, ones(length(t_fit)))
+a, b = X \ perf[t_fit]
+```
+
+```{julia}
+fig = Figure(size=(1000, 500))
+
+ax1 = Axis(fig[1, 1], xlabel="t", ylabel="mean values", title="confidence bounds")
+for i = 1:k
+    lines!(ax1, k:maxt, lower_bounds[i, k:maxt], color=red, linewidth=2)
+    lines!(ax1, k:maxt, upper_bounds[i, k:maxt], color=blue, linewidth=2)
+end
+
+elem_lower = LineElement(color=red, linewidth=2)
+elem_upper = LineElement(color=blue, linewidth=2)
+axislegend(ax1, [elem_lower, elem_upper], ["lower", "upper"])
+
+ax2 = Axis(fig[1, 2], xlabel="t", ylabel="regret", title="regret")
+lines!(ax2, 1:maxt, perf, color=red, linewidth=2, label="observation")
+lines!(ax2, 1:maxt, log.(1:maxt) .* a .+ b, color=blue, linewidth=2, label="fit: a+b*log(t)")
+axislegend(ax2, position=:rb)
+xlims!(ax2, 1, maxt)
+ylims!(ax2, 0, 220)
+
+fig
+```
