@@ -1,0 +1,100 @@
+---
+title : "Figure 6.6"
+subtitle : "Locally linear partitioning estimate"
+author : "Thimoté Dupuch"
+date : today
+format:
+  html:
+    embed-resources: true
+    theme:
+      light: zephyr
+      dark: darkly
+engine: julia
+---
+
+```{julia}
+#| echo : false
+#| output : false
+using Pkg
+Pkg.activate("../..")
+```
+
+```{julia}
+#| output : false
+using LinearAlgebra, Random, Statistics, CairoMakie
+```
+
+```{julia}
+#| output : false
+#| echo : false
+CairoMakie.set_theme!(theme_latexfonts())
+CairoMakie.activate!(type = "svg")
+```
+
+```{julia}
+#| output : false
+blue, orange, green, pink, teal, red, yellow = Makie.wong_colors()
+```
+
+```{julia}
+#| output : false
+target_fun(x) = 0.5 .- abs.(x .- 0.5)
+
+function generate_data(rng; n=100, std_noise=0.1)
+    Xtrain = rand(rng, n, 1)
+    ytrain = target_fun(Xtrain) .+ std_noise * randn(rng, n, 1)
+    Xtest = collect(0:0.01:1)
+    ytest = target_fun(Xtest)
+    return Xtrain[:, 1], ytrain[:, 1], Xtest, ytest
+end
+
+function fit_locally_linear(Xtrain, ytrain, Xtest, Jcard)
+    bintest = ceil.(Int, Xtest .* Jcard)
+    bintest[bintest .== 0] .= 1
+    bintrain = ceil.(Int, Xtrain .* Jcard)
+    bintrain[bintrain .== 0] .= 1
+
+    ftest = zeros(length(Xtest))
+    for itest in 1:length(Xtest)
+        bin = bintest[itest]
+        ind = findall(bintrain .== bin)
+        if isempty(ind)
+            ftest[itest] = mean(ytrain)
+        else
+            yloc = ytrain[ind]
+            Xloc = hcat(Xtrain[ind], ones(length(ind)))
+            # If underdetermined, fall back to mean, otherwise solve least squares
+            if length(ind) < 2
+                ftest[itest] = mean(yloc)
+            else
+                theta = Xloc \ yloc
+                ftest[itest] = Xtest[itest] * theta[1] + theta[2]
+            end
+        end
+    end
+    return ftest
+end
+```
+
+```{julia}
+rng = MersenneTwister(1)
+
+fig = Figure(size=(1500, 500), fontsize=18)
+Jcards = [5, 15, 30]
+
+for (i, Jcard) in enumerate(Jcards)
+    Xtrain, ytrain, Xtest, ytest = generate_data(rng)
+    ftest = fit_locally_linear(Xtrain, ytrain, Xtest, Jcard)
+
+    ax = Axis(fig[1, i], limits=((0, 1), (-0.2, 0.7)),
+              xlabel="x", ylabel="y", title="|J| = $Jcard")
+
+    lines!(ax, Xtest, ytest, color=blue, linewidth=2, label="target")
+    lines!(ax, Xtest, ftest, color=red, linewidth=2, label="regressogram-aff.")
+    scatter!(ax, Xtrain, ytrain, color=:black, marker=:x, markersize=10)
+
+    axislegend(ax, position=:lt)
+end
+
+fig
+```

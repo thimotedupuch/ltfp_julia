@@ -1,0 +1,129 @@
+---
+title : "Figure 11.4"
+subtitle : "Double descent for random linear projections"
+author : "Thimoté Dupuch"
+date : today
+format:
+  html:
+    embed-resources: true
+    theme:
+      light: zephyr
+      dark: darkly
+engine: julia
+---
+
+```{julia}
+#| echo : false
+#| output : false
+using Pkg
+Pkg.activate("../..")
+```
+
+```{julia}
+#| output : false
+using LinearAlgebra, Random, Statistics, CairoMakie
+```
+
+```{julia}
+#| output : false
+#| echo : false
+CairoMakie.set_theme!(theme_latexfonts())
+CairoMakie.activate!(type = "svg")
+```
+
+```{julia}
+#| output : false
+blue, orange, green, pink, teal, red, yellow = Makie.wong_colors()
+```
+
+```{julia}
+#| output : false
+function run_random_projections(; seed=0, n=200, d=400, nrep=20, std_noise=0.5)
+    rng = MersenneTwister(seed)
+
+    # Covariance Matrix Sigma
+    temp = randn(rng, d, d)
+    temp = temp + temp'
+    F = eigen(temp)
+    Sigma = F.vectors * Diagonal(1.0 ./ (1:d)) * F.vectors'
+    Sigma = Sigma / trace(Sigma)
+
+    # Matrix square root
+    F_sig = eigen(Sigma)
+    Sigmasqrt = F_sig.vectors * Diagonal(sqrt.(max.(F_sig.values, 0.0))) * F_sig.vectors'
+
+    theta_ast = randn(rng, d)
+    theta_ast = theta_ast / sqrt(dot(theta_ast, Sigma * theta_ast))
+
+    ms = collect(0:2:2*d)
+    # Remove ms too close to n to avoid numerical instability
+    filter!(m -> abs(m - n) >= 5, ms)
+
+    empRvar = fill(Inf, length(ms), nrep)
+    empRbias = fill(Inf, length(ms), nrep)
+
+    for irep in 1:nrep
+        X = sign.(randn(rng, n, d)) * Sigmasqrt
+        epsilon = sign.(randn(rng, n))
+        Sfull = sign.(randn(rng, d, 2 * d))
+
+        for (im, m) in enumerate(ms)
+            if m == 0
+                thetabias = zeros(d)
+                thetavar = zeros(d)
+
+                empRvar[im, irep] = dot(thetavar, Sigma * thetavar)
+                empRbias[im, irep] = dot(thetabias .- theta_ast, Sigma * (thetabias .- theta_ast))
+            else
+                S = Sfull[:, 1:m]
+
+                if m < n
+                    # Solve under-parameterized projection
+                    XS = X * S
+                    invSXXS = inv(XS' * XS)
+                    thetabias = S * (invSXXS * (XS' * (X * theta_ast)))
+                    thetavar = S * (invSXXS * (XS' * epsilon))
+                else
+                    # Solve over-parameterized projection
+                    XS = X * S
+                    invXSSX = inv(XS * XS')
+                    thetabias = S * (XS' * (invXSSX * (X * theta_ast)))
+                    thetavar = S * (XS' * (invXSSX * epsilon))
+                end
+
+                empRvar[im, irep] = dot(thetavar, Sigma * thetavar)
+                empRbias[im, irep] = dot(thetabias .- theta_ast, Sigma * (thetabias .- theta_ast))
+            end
+        end
+    end
+
+    mean_bias = mean(empRbias, dims=2)[:, 1]
+    mean_var = mean(empRvar, dims=2)[:, 1]
+    std_total = std(empRbias + std_noise^2 * empRvar, dims=2)[:, 1]
+
+    excess_risk = mean_bias + std_noise^2 * mean_var
+
+    return ms, excess_risk, std_total
+end
+```
+
+```{julia}
+ms, excess_risk, std_total = run_random_projections()
+```
+
+```{julia}
+fig = Figure(size=(800, 600), fontsize=18)
+ax = Axis(fig[1, 1], xlabel="m", ylabel="excess risks", title="Double descent for random linear projections", limits=((0, maximum(ms)), (0, 4.0)))
+
+lines!(ax, ms, excess_risk, color=blue, linewidth=2, label="mean")
+lines!(ax, ms, excess_risk + std_total, color=blue, linestyle=:dash, linewidth=2, label="mean ± std")
+
+temp_lower = excess_risk - std_total
+# Set negative elements to a large value or ignore for visualization as in Matlab
+temp_lower[temp_lower .< 0] .= NaN
+lines!(ax, ms, temp_lower, color=blue, linestyle=:dash, linewidth=2)
+
+axislegend(ax, position=:rt)
+
+fig
+```

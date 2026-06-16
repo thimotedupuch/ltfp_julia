@@ -1,0 +1,83 @@
+---
+title : "Figure 6.4"
+subtitle : "Nadaraya-Watson in one dimension"
+author : "Thimoté Dupuch"
+date : today
+format:
+  html:
+    embed-resources: true
+    theme:
+      light: zephyr
+      dark: darkly
+engine: julia
+---
+
+```{julia}
+#| echo : false
+#| output : false
+using Pkg
+Pkg.activate("../..")
+```
+
+```{julia}
+#| output : false
+using LinearAlgebra, Random, Statistics, CairoMakie
+```
+
+```{julia}
+#| output : false
+#| echo : false
+CairoMakie.set_theme!(theme_latexfonts())
+CairoMakie.activate!(type = "svg")
+```
+
+```{julia}
+#| output : false
+blue, orange, green, pink, teal, red, yellow = Makie.wong_colors()
+```
+
+```{julia}
+#| output : false
+target_fun(x) = 0.5 .- abs.(x .- 0.5)
+
+function generate_data(rng; n=100, std_noise=0.1)
+    Xtrain = rand(rng, n, 1)
+    ytrain = target_fun(Xtrain) .+ std_noise * randn(rng, n, 1)
+    Xtest = collect(0:0.01:1)
+    ytest = target_fun(Xtest)
+    return Xtrain[:, 1], ytrain[:, 1], Xtest, ytest
+end
+
+function fit_nadaraya(Xtrain, ytrain, Xtest, h)
+    ftest = zeros(length(Xtest))
+    for itest in 1:length(Xtest)
+        x = Xtest[itest]
+        temp = exp.(.-(x .- Xtrain).^2 ./ (2.0 * h * h))
+        ftest[itest] = dot(temp, ytrain) / sum(temp)
+    end
+    return ftest
+end
+```
+
+```{julia}
+rng = MersenneTwister(1)
+
+fig = Figure(size=(1500, 500), fontsize=18)
+hs = [0.005, 0.05, 0.25]
+
+for (i, h) in enumerate(hs)
+    Xtrain, ytrain, Xtest, ytest = generate_data(rng)
+    ftest = fit_nadaraya(Xtrain, ytrain, Xtest, h)
+
+    ax = Axis(fig[1, i], limits=((0, 1), (-0.2, 0.7)),
+              xlabel="x", ylabel="y", title="h = $h")
+
+    lines!(ax, Xtest, ytest, color=blue, linewidth=2, label="target")
+    lines!(ax, Xtest, ftest, color=red, linewidth=2, label="Nadaraya-W.")
+    scatter!(ax, Xtrain, ytrain, color=:black, marker=:x, markersize=10)
+
+    axislegend(ax, position=:lt)
+end
+
+fig
+```

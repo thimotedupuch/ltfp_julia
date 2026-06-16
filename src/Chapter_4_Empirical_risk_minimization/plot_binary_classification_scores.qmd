@@ -1,0 +1,90 @@
+---
+title : Figure 4.2
+subtitle : Optimal score functions
+author : Thimoté Dupuch
+date : today
+format:
+  html:
+    embed-resources: true
+    theme:
+      light: zephyr
+      dark: darkly
+engine: julia
+---
+
+## Optimal score functions for Gaussian class-conditional densities in one dimension.
+```{julia}
+#| echo : false
+#| output : false
+using Pkg
+Pkg.activate("../..")
+```
+
+
+```{julia}
+#| output : false
+using LinearAlgebra, Random, Statistics, CairoMakie
+```
+
+
+```{julia}
+#| output : false
+#| echo : false
+CairoMakie.set_theme!(theme_latexfonts())
+CairoMakie.activate!(type = "svg")
+```
+
+```{julia}
+#| output : false
+blue, orange, green, pink, teal, red, yellow = Makie.wong_colors()
+```
+
+```{julia}
+#| output : false
+gaussian_pdf(x, μ, σ) = 1/(sqrt(2π) * σ) .* exp.(-((x .- μ).^2) ./ (2σ^2))
+```
+```{julia}
+#| output : false
+function plot_binary_classification_scores()
+    x = -5:0.01:5
+
+    # Class-conditional densities
+    μ1, σ1 = 2.0, 1.0
+    μ2, σ2 = -2.0, 1.0
+
+    pdf1 = gaussian_pdf(x, μ1, σ1)
+    pdf2 = gaussian_pdf(x, μ2, σ2)
+    η = pdf1 ./ (pdf1 .+ pdf2) # Posterior probability
+
+    fig = Figure(size=(800, 400))
+
+    ax1 = Axis(
+        fig[1, 1],
+        title = "Class-conditional densities",
+        limits = (-5, 5, 0, 0.41)
+    )
+
+    lines!(ax1, x, pdf1, label="Class 1")
+    lines!(ax1, x, pdf2, label="Class -1")
+    axislegend(ax1)
+
+    ax2 = Axis(
+        fig[1, 2],
+        title = "Optimal scores",
+        limits = (-5, 5, -3, 3)
+    )
+
+    score = 2 .* η .- 1
+
+    lines!(ax2, x, score, label=L"2 \eta (x) - 1")
+    lines!(ax2, x, sign.(score), label = L"\text{sign} (2 \eta (x) - 1)")
+    lines!(ax2, x, 2*atanh.(score), label = L"2 \text{atanh} (2\eta (x) - 1)")
+    axislegend(ax2, position = :lt)
+
+    fig
+end
+```
+
+```{julia}
+plot_binary_classification_scores()
+```

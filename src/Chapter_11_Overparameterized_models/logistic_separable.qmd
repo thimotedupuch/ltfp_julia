@@ -1,0 +1,113 @@
+---
+title : Figure 11.1
+subtitle : Logistic regression on separable data
+author : Thimoté Dupuch
+date : today
+format:
+  html:
+    embed-resources: true
+    theme:
+      light: zephyr
+      dark: darkly
+engine: julia
+---
+
+```{julia}
+#| echo : false
+#| output : false
+using Pkg; Pkg.activate("../.."); Pkg.status()
+```
+
+```{julia}
+#| output : false
+using CairoMakie, Statistics, Random, LinearAlgebra
+```
+
+```{julia}
+#| output : false
+#| echo : false
+CairoMakie.set_theme!(theme_latexfonts())
+CairoMakie.activate!(type = "svg")
+```
+
+```{julia}
+#| output : false
+blue, orange, green, pink, teal, red, yellow = Makie.wong_colors()
+```
+
+```{julia}
+# separable data
+Random.seed!(1)
+d = 2
+n = 100
+y = [ones(n ÷ 2); -ones(n ÷ 2)]
+X = [
+    -ones(n ÷ 2, 1) -ones(n ÷ 2, 1);
+    ones(n ÷ 2, 1) ones(n ÷ 2, 1)
+    ] .+ randn(n, 2) ./ 2
+
+X_ext = [X ones(n)]
+d = d + 1
+L = opnorm(X_ext)^2 / n
+w = randn(d)
+w[end] = 0.0
+
+# GD
+maxiter = 100000
+ws = zeros(d, maxiter)
+functionerror = zeros(maxiter)
+functionval = zeros(maxiter)
+
+for iter in 1:maxiter
+    ws[:, iter] = w
+    functionerror[iter] = mean(y .* (X_ext * w) .< 0)
+    functionval[iter] = mean(log.(1 .+ exp.(-y .* (X_ext * w))))
+    temp = (X_ext * w) .* y
+    grad = (1 / n) * X_ext' * (y .* (-1 ./ (1 .+ exp.(temp))))
+    global w = w - (1 / L) * grad
+end
+```
+
+```{julia}
+itertoplot = round.(Int, 2 .^ (0.5:0.5:9))
+fig = Figure(size=(1200, 600))
+for (i, it) in enumerate(itertoplot)
+    row = (i - 1) ÷ 6 + 1
+    col = (i - 1) % 6 + 1
+    ax = Axis(
+        fig[row, col],
+        title="t = $it",
+        limits=(-4, 4, -4, 4),
+        xticklabelsvisible=false,
+        yticklabelsvisible=false,
+        xticksvisible=false,
+        yticksvisible=false
+    )
+
+    scatter!(
+        ax, X[y .== 1, 1], X[y .== 1, 2],
+        marker=:cross, color=blue, markersize=10
+    )
+    scatter!(
+        ax, X[y .== -1, 1], X[y .== -1, 2],
+        marker=:cross, color=red, markersize=10
+    )
+
+    Xleft, Xright = -10.0, 10.0
+
+    # Boundary at current iter
+    Yleft = -(ws[3, it] + Xleft * ws[1, it]) / ws[2, it]
+    Yright = -(ws[3, it] + Xright * ws[1, it]) / ws[2, it]
+    lines!(ax, [Xleft, Xright], [Yleft, Yright], color=:black, linewidth=2)
+
+    # Boundary at end
+    Yleft_end = -(ws[3, end] + Xleft * ws[1, end]) / ws[2, end]
+    Yright_end = -(ws[3, end] + Xright * ws[1, end]) / ws[2, end]
+    lines!(
+        ax, [Xleft, Xright], [Yleft_end, Yright_end],
+        color=:black, linestyle=:dot, linewidth=2
+    )
+end
+
+fig
+```

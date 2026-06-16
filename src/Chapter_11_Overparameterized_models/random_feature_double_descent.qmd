@@ -1,0 +1,124 @@
+---
+title : "Figures 11.2 & 11.3"
+subtitle : "Double descent curves for random non-linear features"
+author : "Thimoté Dupuch"
+date : today
+format:
+  html:
+    embed-resources: true
+    theme:
+      light: zephyr
+      dark: darkly
+engine: julia
+---
+
+```{julia}
+#| echo : false
+#| output : false
+using Pkg
+Pkg.activate("../..")
+```
+
+```{julia}
+#| output : false
+using LinearAlgebra, Random, Statistics, CairoMakie
+```
+
+```{julia}
+#| output : false
+#| echo : false
+CairoMakie.set_theme!(theme_latexfonts())
+CairoMakie.activate!(type = "svg")
+```
+
+```{julia}
+#| output : false
+blue, orange, green, pink, teal, red, yellow = Makie.wong_colors()
+```
+
+```{julia}
+#| output : false
+function normalize_rows(X)
+    return X ./ sqrt.(sum(X.^2, dims=2))
+end
+
+function run_double_descent_simulation(; seed=1, d=5, ntrain=200, ntest=200, sigma=2.0)
+    rng = MersenneTwister(seed)
+    w0 = randn(rng, d)
+
+    # Generate data
+    Xtrain = normalize_rows(randn(rng, ntrain, d))
+    ytrain = 1.0 ./ (0.25 .+ (Xtrain * w0).^2) + sigma * randn(rng, ntrain)
+
+    Xtest = normalize_rows(randn(rng, ntest, d))
+    ytest = 1.0 ./ (0.25 .+ (Xtest * w0).^2) + sigma * randn(rng, ntest)
+
+    ms = 0:800
+    W_rffs = normalize_rows(randn(rng, maximum(ms), d))
+
+    train_errors = zeros(length(ms))
+    test_errors = zeros(length(ms))
+
+    for (im, m) in enumerate(ms)
+        if m == 0
+            train_errors[im] = mean(ytrain.^2)
+            test_errors[im] = mean(ytest.^2)
+        else
+            Phi_train = max.(Xtrain * W_rffs[1:m, :]', 0.0)
+            Phi_test = max.(Xtest * W_rffs[1:m, :]', 0.0)
+
+            V = (Phi_train' * Phi_train + 1e-12 * I * ntrain) \ (Phi_train' * ytrain)
+
+            train_errors[im] = mean((ytrain .- Phi_train * V).^2)
+            test_errors[im] = mean((ytest .- Phi_test * V).^2)
+        end
+    end
+
+    # Regularization by square norm
+    lambdas = 10.0 .^ (-12:0.25:4)
+    train_errors_lambda = zeros(length(lambdas))
+    test_errors_lambda = zeros(length(lambdas))
+
+    m_max = maximum(ms)
+    Phi_train_max = max.(Xtrain * W_rffs', 0.0)
+    Phi_test_max = max.(Xtest * W_rffs', 0.0)
+
+    for (ilambda, lambda) in enumerate(lambdas)
+        V = (Phi_train_max' * Phi_train_max + lambda * I * ntrain) \ (Phi_train_max' * ytrain)
+        train_errors_lambda[ilambda] = mean((ytrain .- Phi_train_max * V).^2)
+        test_errors_lambda[ilambda] = mean((ytest .- Phi_test_max * V).^2)
+    end
+
+    return ms, train_errors, test_errors, lambdas, train_errors_lambda, test_errors_lambda, ntrain
+end
+```
+
+```{julia}
+ms, train_errs, test_errs, lambdas, train_lambda, test_lambda, ntrain = run_double_descent_simulation()
+```
+
+```{julia}
+fig = Figure(size=(1200, 900), fontsize=18)
+
+# Row 1: Underparameterized regime & Ridge regularisation (Figure 11.2)
+ax1 = Axis(fig[1, 1], xlabel="number of random features", ylabel="test error",
+           title="Feature cardinality (underparameterized)", limits=((0, ntrain - 1), (0, 19.0)))
+lines!(ax1, ms[1:ntrain], train_errs[1:ntrain], color=blue, linewidth=2, label="train")
+lines!(ax1, ms[1:ntrain], test_errs[1:ntrain], color=red, linewidth=2, label="test")
+axislegend(ax1, position=:lt)
+
+ax2 = Axis(fig[1, 2], xlabel=L"-\log_{10}(\lambda)", ylabel="test error",
+           title="Regularization parameter", limits=((minimum(-log10.(lambdas)), maximum(-log10.(lambdas))), (0, 19.0)))
+lines!(ax2, -log10.(lambdas), train_lambda, color=blue, linewidth=2, label="train")
+lines!(ax2, -log10.(lambdas), test_lambda, color=red, linewidth=2, label="test")
+axislegend(ax2, position=:lt)
+
+# Row 2: Full Double Descent (Figure 11.3)
+ax3 = Axis(fig[2, :], xlabel="number of random features", ylabel="test error",
+           title="Feature cardinality (full range)", limits=((0, maximum(ms)), (0, 19.0)))
+lines!(ax3, ms, train_errs, color=blue, linewidth=2, label="train")
+lines!(ax3, ms, test_errs, color=red, linewidth=2, label="test")
+axislegend(ax3, position=:rb)
+
+fig
+```

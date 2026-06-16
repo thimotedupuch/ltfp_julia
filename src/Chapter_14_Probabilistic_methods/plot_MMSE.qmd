@@ -1,0 +1,138 @@
+---
+title : Figure 14.3
+subtitle : Comparison of MMSE and MAP
+author : Thimoté Dupuch
+date : today
+format:
+  html:
+    embed-resources: true
+    theme:
+      light: zephyr
+      dark: darkly
+engine: julia
+---
+
+```{julia}
+#| echo : false
+#| output : false
+using Pkg; Pkg.activate("../.."); Pkg.status()
+```
+
+```{julia}
+#| output : false
+using CairoMakie, Statistics, Random, LinearAlgebra, SpecialFunctions
+```
+
+```{julia}
+#| output : false
+#| echo : false
+CairoMakie.set_theme!(theme_latexfonts())
+CairoMakie.activate!(type = "svg")
+```
+
+```{julia}
+#| output : false
+blue, orange, green, pink, teal, red, yellow = Makie.wong_colors()
+```
+
+```{julia}
+"""
+    spike_slab_density(y, σ; α=0.95)
+
+Spike-and-slab prior density convolved with Gaussian noise of variance σ².
+The slab component is scaled by τ = √(1/(1-α)) to give the slab unit variance.
+"""
+function spike_slab_density(y, σ; α = 0.95)
+    τ = sqrt(1 / (1 - α))
+    norm = 1 / sqrt(2π)
+    spike(y) = α / σ * exp(-y^2 / (2σ^2))
+    slab(y)  = (1 - α) / sqrt(σ^2 + τ^2) * exp(-y^2 / (2(σ^2 + τ^2)))
+    norm .* (spike.(y) .+ slab.(y))
+end
+
+"""
+    laplace_density(y, σ; λ=sqrt(2))
+
+Laplace prior density (with parameter λ) convolved with Gaussian noise of variance σ².
+λ = √2 gives the Laplace prior unit variance.
+"""
+function laplace_density(y, σ; λ = sqrt(2))
+    a = λ^2 * σ^2 / 2
+    b = λ * σ
+
+    return @. λ/4 * (
+        exp(a - λ*y) * (1 - erf((b - y/σ)/sqrt(2))) +
+        exp(a + λ*y) * (1 - erf((b + y/σ)/sqrt(2)))
+    )
+end
+
+"""
+    compute_mmse(y, σ, density_fn; kwargs...)
+
+Compute the MMSE (posterior mean) estimator via the identity:
+    E[x|y] = y + σ² · d/dy log p(y)
+using finite differences on the log-density.
+Returns estimates on the grid y[2:end].
+"""
+function compute_mmse(y, σ, density_fn; kwargs...)
+    py = density_fn(y, σ; kwargs...)
+    Δy = y[2] - y[1]
+    return y[2:end] .+ σ^2 .* (log.(py[2:end]) .- log.(py[1:end-1])) ./ Δy
+end
+
+"""
+    compute_laplace_map(y, σ; λ=sqrt(2))
+
+Compute the MAP estimator for a Laplace prior with parameter λ
+under Gaussian noise of variance σ² (soft-thresholding).
+"""
+compute_laplace_map(y, σ; λ=sqrt(2)) = sign.(y) .* max.(abs.(y) .- λ * σ^2, 0)
+
+y     = -5:0.015:5
+y_mid = y[2:end]   # MMSE/MAP are evaluated on the shifted grid
+
+sigmas       = [1/8, 1/2, 1, 2]
+sigma_labels = ["1/8", "1/2", "1", "2"]
+colors       = [blue, orange, green, pink]
+
+# Pre-compute all estimators
+ss_mmse  = [compute_mmse(y, σ, spike_slab_density) for σ in sigmas]
+lap_mmse = [compute_mmse(y, σ, laplace_density)    for σ in sigmas]
+lap_map  = [compute_laplace_map(collect(y_mid), σ) for σ in sigmas]
+
+fig = Figure(size=(1000, 333))
+
+function add_lines!(ax, estimates, cols, labs)
+    for (est, col, lab) in zip(estimates, cols, labs)
+        lines!(ax, collect(y_mid), est; linewidth=2, color=col, label=lab)
+    end
+    axislegend(ax; position=:lt)
+end
+
+ax1 = Axis(fig[1, 1];
+    title="Spike and Slab — MMSE",
+    xlabel="y", ylabel="MMSE(y)",
+    xticks=-5:5:5,
+    yticks=-5:5:5,
+)
+add_lines!(ax1, ss_mmse, colors, sigma_labels)
+
+ax2 = Axis(fig[1, 2];
+    title="Laplace — MMSE",
+    xlabel="y", ylabel="MMSE(y)",
+    xticks=-5:5:5,
+    yticks=-5:5:5,
+
+)
+add_lines!(ax2, lap_mmse, colors, sigma_labels)
+
+ax3 = Axis(fig[1, 3];
+    title="Laplace — MAP",
+    xlabel="y", ylabel="MAP(y)",
+    xticks=-5:5:5,
+    yticks=-5:5:5,
+)
+add_lines!(ax3, lap_map, colors, sigma_labels)
+
+fig
+```

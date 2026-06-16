@@ -1,0 +1,102 @@
+---
+title : Learning Theory From First Principles
+subtitle : Julia implementation of figures
+format:
+  html:
+    embed-resources: true
+    theme:
+      light: zephyr
+      dark: darkly
+engine: julia
+---
+
+### Relevant links
+
+[Learning Theory From First Principles - MIT Press](https://mitpress.mit.edu/9780262049443/learning-theory-from-first-principles/)
+
+[Final Draft PDF version](https://www.di.ens.fr/%7Efbach/ltfp_book.pdf)
+
+[Matlab Code](https://www.di.ens.fr/~fbach/ltfp/)
+
+[Python Code](https://github.com/fbach2000/Learning_Theory_from_First_Principles)
+
+---
+
+
+#### Chapter 1: Mathematical preliminaries
+
+- [Figure 1.1 (expectation of maximum of Gaussian random variables)](Chapter_1_Mathematical_preliminaries/expectation_of_max.html)
+
+
+#### Chapter 2: Introduction to supervised learning
+- [Figure 2.1 (polynomial regression with increasing orders - predictions)](Chapter_2_Introduction_to_supervised_learning/polynomial_regression.html)
+- [Figure 2.2 (polynomial regression with increasing orders - errors)](Chapter_2_Introduction_to_supervised_learning/polynomial_regression.html)
+
+#### Chapter 3: Linear least-squares regression
+- [Figure 3.1 (polynomial regression with varying number of observations)](Chapter_3_Linear_least_squares_regression/ols_polynomials_plots.html)
+- [Figure 3.2 (convergence rate for polynomial regression)](Chapter_3_Linear_least_squares_regression/ols_polynomials_rates.html)
+- [Figure 3.3 (polynomial ridge regression)](Chapter_3_Linear_least_squares_regression/ridge_regression.html)
+
+
+#### Chapter 4: Empirical risk minimization
+- [Figure 4.1 (convex surrogates)](Chapter_4_Empirical_risk_minimization/plot_loss_theory_class.html)
+- [Figure 4.2 (optimal score functions for Gaussian class-conditional densities)](Chapter_4_Empirical_risk_minimization/plot_binary_classification_scores.html)
+
+
+
+#### Chapter 5: Optimization
+- [Figure 5.1 (gradient descent on two least-squares problems)](Chapter_5_Optimization/grad_descent_comparison.html)
+- [Figure 5.2 (comparison of step-sizes for SGD for the support vector machine)](Chapter_5_Optimization/hinge_sgd.html)
+- [Figure 5.4 (comparison of step-sizes for SGD for logistic regression)](Chapter_5_Optimization/logistic_sgd_saga.html)
+
+
+
+#### Chapter 6: Local averaging methods
+- [Figure 6.2 (regressogram in one dimension)](Chapter_6_Local_averaging_methods/regressogram.html)
+- [Figure 6.3 (k-nearest neighbor in one dimension)](Chapter_6_Local_averaging_methods/knn.html)
+- [Figure 6.4 (Nadaraya-Watson in one dimension)](Chapter_6_Local_averaging_methods/nadaraya.html)
+- [Figure 6.5 (learning curves for local averaging)](Chapter_6_Local_averaging_methods/all_learning_curves.html)
+- [Figure 6.6 (locally linear partitioning estimate)](Chapter_6_Local_averaging_methods/regressogram_poly.html)
+
+
+
+#### Chapter 7: Kernel methods
+- [Figure 7.2 (minimum norm interpolator)](Chapter_7_Kernel_methods/interpolate_kernel.html)
+- [Figure 7.3 (comparison of kernels)](Chapter_7_Kernel_methods/kernel_simulations_1d_single_plot.html)
+
+
+
+#### Chapter 8: Sparse methods
+- [Figure 8.1 (regularization path)](Chapter_8_Sparse_methods/path_lasso.html)
+- [Figure 8.2 (comparison of estimators)](Chapter_8_Sparse_methods/model_selection.html)
+
+
+#### Chapter 9: Neural networks
+- [Figure 9.1 (global convergence for different numbers of neurons)](Chapter_9_Neural_networks/neural_networks_1d_testerrors.html)
+- [Figure 9.2 (random features - kernels)](Chapter_9_Neural_networks/random_features_interpolation.html)
+- [Figure 9.3 (neural networks fitting)](Chapter_9_Neural_networks/neural_networks_1d.html)
+
+
+
+#### Chapter 10: Ensemble learning
+- [Figure 10.1 (bagged 1-nn estimation)](Chapter_10_Ensemble_learning/bagging_1nn.html)
+- [Figure 10.2 (Gaussian random projections)](Chapter_10_Ensemble_learning/random_projections.html)
+- [Figure 10.3 (Boosting)](Chapter_10_Ensemble_learning/boosting_lasso.html)
+
+#### Chapter 11: Overparameterized models
+- [Figure 11.1 (logistic regression on separable data)](Chapter_11_Overparameterized_models/logistic_separable.html)
+- [Figures 11.2 and 11.3 (double descent curves, random non-linear features)](Chapter_11_Overparameterized_models/random_feature_double_descent.html)
+- [Figure 11.4 (double descent, random linear projections)](Chapter_11_Overparameterized_models/random_projections_double_descent.html)
+
+#### Chapter 12: Lower bounds
+
+#### Chapter 13: Online learning and bandits
+- [Figure 13.1 (zero-th order optimisation)](Chapter_13_Online_learning_and_bandits/zero_order_quadratic.html)
+- [Figure 13.2 (UCB algorithm)](Chapter_13_Online_learning_and_bandits/ucb.html)
+
+#### Chapter 14: Probabilistic methods
+- [Figure 14.3 (MMSE vs. MAP)](Chapter_14_Probabilistic_methods/plot_MMSE.html)
+- [Figure 14.4 (Discriminative vs. generative learning)](Chapter_14_Probabilistic_methods/compare_LDA_Logistic.html)
+
+#### Chapter 15: Structured prediction
+- [Figure 15.1 (robust regression)](Chapter_15_Structured_prediction/robust_regression.html)

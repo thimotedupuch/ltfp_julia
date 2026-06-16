@@ -1,0 +1,87 @@
+---
+title : Figure 10.1
+subtitle : Bagged 1-nn estimation
+author : Thimoté Dupuch
+date : today
+format:
+  html:
+    embed-resources: true
+    theme:
+      light: zephyr
+      dark: darkly
+engine: julia
+---
+
+```{julia}
+#| echo : false
+#| output : false
+using Pkg; Pkg.activate("../.."); Pkg.status()
+```
+
+```{julia}
+#| output : false
+using CairoMakie, Statistics, Random, LinearAlgebra, SpecialFunctions
+```
+
+```{julia}
+#| output : false
+#| echo : false
+CairoMakie.set_theme!(theme_latexfonts())
+CairoMakie.activate!(type = "svg")
+```
+
+```{julia}
+#| output : false
+blue, orange, green, pink, teal, red, yellow = Makie.wong_colors()
+```
+
+```{julia}
+function bagging_1nn(x, y, xtest; m, nrep)
+    n = length(x)
+    nloc = round(Int, n / m)
+    ypred = zeros(length(xtest), nrep)
+
+    for irep in 1:nrep
+        idx = randperm(n)[1:nloc]
+        xs, ys = x[idx], y[idx]
+
+        dists = abs2.(xs .- xtest')
+        nn_idx = [argmin(dists[:, j]) for j in axes(dists, 2)]
+        ypred[:, irep] = ys[nn_idx]
+    end
+    return mean(ypred, dims=2) |> vec
+end
+
+xtest = 0:0.001:1
+fxtest = sin.(2π .* xtest)
+
+std_noise = 0.35
+n = 200
+x = collect(0:(n-1)) ./ n
+y = sin.(2π .* x) .+ std_noise * randn(n)
+
+ms = sort(unique(round.(Int, 2.0 .^(0:7))))
+nrep = 100
+
+fig = Figure(size=(1200, 600))
+
+for (im, m) in enumerate(ms)
+    ypred_mean = bagging_1nn(x, y, xtest; m=m, nrep=nrep)
+    error = mean((ypred_mean .- fxtest).^2)
+
+    ax = Axis(fig[cld(im, 4), mod1(im, 4)],
+        title = "n/s = $m - error = $(round(error, digits=3))",
+    )
+    ylims!(ax, (-1.5, 1.6))
+
+    lines!(ax, xtest, ypred_mean, color=blue, linewidth=2, label="bagging")
+    lines!(ax, xtest, fxtest, color=red, linewidth=2, label="target")
+    scatter!(ax, x, y, marker=:x, color=:black, markersize=8, label="data")
+
+    if im == 1
+        axislegend(ax, position=:rt)
+    end
+end
+
+fig
+```

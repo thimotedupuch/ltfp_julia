@@ -1,0 +1,132 @@
+---
+title : Figure 3.2
+subtitle : Convergence rate for polynomial regression
+author : Thimoté Dupuch
+date : today
+format:
+  html:
+    embed-resources: true
+    theme:
+      light: zephyr
+      dark: darkly
+engine: julia
+---
+
+```{julia}
+#| echo : false
+#| output : false
+using Pkg; Pkg.activate("../.."); Pkg.status()
+```
+
+```{julia}
+#| output : false
+using CairoMakie, Statistics, Random
+```
+
+```{julia}
+#| output : false
+#| echo : false
+CairoMakie.set_theme!(theme_latexfonts())
+CairoMakie.activate!(type = "svg")
+```
+
+```{julia}
+#| output : false
+blue, orange, green, pink, teal, red, yellow = Makie.wong_colors()
+```
+
+```{julia}
+seed = 1
+Random.seed!(seed)
+std_noise = 0.25
+
+Xgrid = collect(-1:0.001:1)
+ns = round.(Int, 10 .^ (1:0.25:5))
+Ygrid = Xgrid .^ 2 .- 0.5
+Ygrid_with_noise = Xgrid .^ 2 .- 0.5 .+ randn(length(Ygrid)) .* std_noise
+
+nrep = 32
+kmax = 5
+
+train_error = zeros(nrep, length(ns))
+insample_error = zeros(nrep, length(ns))
+test_error = zeros(nrep, length(ns))
+
+for irep in 1:nrep
+    for in in 1:length(ns)
+        n = ns[in]
+
+        Xsample = rand(n) .* 2 .- 1
+        Ysample = Xsample .^ 2 .- 0.5 .+ randn(n) .* std_noise
+
+        Xdata = hcat([Xsample .^ i for i in 0:kmax]...)
+        Xgriddata = hcat([Xgrid .^ i for i in 0:kmax]...)
+
+        wdata = Xdata \ Ysample
+        Ygrid_prediction = Xgriddata * wdata
+
+        train_error[irep, in] = mean((Xdata * wdata .- Ysample) .^ 2)
+        insample_error[irep, in] = mean((Xdata * wdata .- (Xsample .^ 2 .- 0.5)) .^ 2)
+        test_error[irep, in] = std_noise^2 + mean((Ygrid_prediction .- Ygrid) .^ 2)
+    end
+end
+```
+
+```{julia}
+mean_in = vec(mean(insample_error, dims=1))
+std_in = vec(std(insample_error, dims=1))
+mean_test = vec(mean(test_error, dims=1))
+std_test = vec(std(test_error, dims=1))
+
+x_log = log10.(ns)
+
+fig = Figure(size=(800, 400))
+
+# Fixed design (Subplot 1)
+ax1 = Axis(fig[1, 1],
+           xlabel=L"\log_{10}(n)",
+           ylabel=L"\log_{10}(\text{excess risk})",
+           title="Fixed design",
+           titlefont=:regular,
+           titlesize=16)
+
+y1 = log10.(max.(mean_in, 1e-12))
+lower_bound1 = log10.(max.(mean_in .- std_in, 1e-12))
+upper_bound1 = log10.(mean_in .+ std_in)
+lower_err1 = max.(0.0, y1 .- lower_bound1)
+upper_err1 = max.(0.0, upper_bound1 .- y1)
+
+errorbars!(ax1, x_log, y1, lower_err1, upper_err1, color=blue, linewidth=2)
+lines!(ax1, x_log, y1, color=blue, linewidth=2, label="excess risk")
+
+y_theory = log10.(std_noise^2 .* (kmax + 1) ./ ns)
+lines!(ax1, x_log, y_theory, color=red, linewidth=2, label=L"\sigma^2 d / n")
+
+axislegend(ax1, position=:rt)
+limits!(ax1, 1, 5, -6, 4)
+
+# Random design (Subplot 2)
+ax2 = Axis(fig[1, 2],
+           xlabel=L"\log_{10}(n)",
+           ylabel=L"\log_{10}(\text{excess risk})",
+           title="Random design",
+           titlefont=:regular,
+           titlesize=16)
+
+mean_excess_test = mean_test .- std_noise^2
+y2 = log10.(max.(mean_excess_test, 1e-12))
+lower_bound2 = log10.(max.(mean_test .- std_test .- std_noise^2, 1e-12))
+upper_bound2 = log10.(max.(mean_test .+ std_test .- std_noise^2, 1e-12))
+lower_err2 = max.(0.0, y2 .- lower_bound2)
+upper_err2 = max.(0.0, upper_bound2 .- y2)
+
+errorbars!(ax2, x_log, y2, lower_err2, upper_err2, color=blue, linewidth=2)
+lines!(ax2, x_log, y2, color=blue, linewidth=2, label="excess risk")
+
+lines!(ax2, x_log, y_theory, color=red, linewidth=2, label=L"\sigma^2 d / n")
+
+axislegend(ax2, position=:rt)
+limits!(ax2, 1, 5, -6, 4)
+
+fig
+```

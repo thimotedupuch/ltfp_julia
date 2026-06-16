@@ -1,0 +1,206 @@
+---
+title : "Figure 8.2"
+subtitle : "Comparison of estimators for sparse recovery"
+author : "Thimoté Dupuch"
+date : today
+format:
+  html:
+    embed-resources: true
+    theme:
+      light: zephyr
+      dark: darkly
+engine: julia
+---
+
+```{julia}
+#| echo : false
+#| output : false
+using Pkg
+Pkg.activate("../..")
+```
+
+```{julia}
+#| output : false
+using LinearAlgebra, Random, Statistics, CairoMakie
+```
+
+```{julia}
+#| output : false
+#| echo : false
+CairoMakie.set_theme!(theme_latexfonts())
+CairoMakie.activate!(type = "svg")
+```
+
+```{julia}
+#| output : false
+blue, orange, green, pink, teal, red, yellow = Makie.wong_colors()
+```
+
+```{julia}
+#| output : false
+function run_omp(X, y, wast, n, d)
+    I = Int[]
+    Ic = collect(1:d)
+    Xorth = copy(X)
+    yorth = copy(y)
+
+    vals_OMP = zeros(d)
+
+    for i in 1:d
+        perfloc = zeros(length(Ic))
+        for j in 1:length(Ic)
+            icand = Ic[j]
+            # Solve local 1D problem
+            denom = dot(Xorth[:, icand], Xorth[:, icand]) + n * 1e-14
+            wcand = dot(Xorth[:, icand], yorth) / denom
+            perfloc[j] = (1.0 / n) * sum((Xorth[:, icand] * wcand .- yorth).^2)
+        end
+
+        _, b = findmin(perfloc)
+        inew = Ic[b]
+        push!(I, inew)
+        deleteat!(Ic, b)
+
+        # Fit OLS on selected active set I
+        X_active = X[:, I]
+        wcand = (X_active' * X_active + n * 1e-12 * I_julia(i)) \ (X_active' * y)
+
+        w = zeros(d)
+        w[I] = wcand
+        vals_OMP[i] = (1.0 / n) * sum((X * (w - wast)).^2)
+
+        # Orthogonalize remaining columns
+        proj_denom = dot(Xorth[:, inew], Xorth[:, inew]) + n * 1e-14
+        proj = (Xorth[:, inew] * Xorth[:, inew]') / proj_denom
+        temp = I_julia(n) - proj
+        Xorth = temp * Xorth
+        yorth = temp * yorth
+    end
+    return vals_OMP
+end
+
+# Helper to generate identity matrix
+I_julia(k) = Matrix(1.0I, k, k)
+
+function run_experiment(; rotated=false, n=64, k=4, std_noise=1.0, nrep=128)
+    ds = unique(round.(Int, 2.0 .^ (2:0.1:8)))
+    dmax = maximum(ds)
+
+    perf_lassos = zeros(length(ds))
+    perf_ridges = zeros(length(ds))
+    perf_omps = zeros(length(ds))
+    perf_oracles = zeros(length(ds))
+    perf_zeros = zeros(length(ds))
+
+    lambdas = 10.0 .^ (1:-0.1:-7)
+
+    for (id, d) in enumerate(ds)
+        lasso_matrix = zeros(length(lambdas), nrep)
+        ridge_matrix = zeros(length(lambdas), nrep)
+        omp_matrix = zeros(d, nrep)
+        oracle_vec = zeros(nrep)
+        zero_vec = zeros(nrep)
+
+        for irep in 1:nrep
+            rng = MersenneTwister(irep)
+            X_all = randn(rng, n, dmax)
+            X = X_all[:, 1:d]
+
+            wast = zeros(d)
+            wast[1:k] = sign.(randn(rng, k))
+            y = X * wast + std_noise * sqrt(k) * randn(rng, n)
+
+            if rotated
+                # Random rotation
+                U, _, _ = svd(randn(rng, d, d))
+                X = X * U
+                wast = U' * wast
+            end
+
+            # Zero prediction
+            zero_vec[irep] = (1.0 / n) * sum((X * wast).^2)
+
+            # Oracle prediction (only active variables)
+            if !rotated
+                # In non-rotated, active are the first k
+                X_oracle = X[:, 1:k]
+                w_oracle = (X_oracle' * X_oracle + n * 1e-12 * I_julia(k)) \ (X_oracle' * y)
+                w_o = zeros(d)
+                w_o[1:k] = w_oracle
+                oracle_vec[irep] = (1.0 / n) * sum((X * (w_o - wast)).^2)
+            else
+                # In rotated case, oracle is not easily defined since sparsity is lost,
+                # but matlab uses the same oracle_vec for rotated too.
+                X_oracle = X[:, 1:k]
+                w_oracle = (X_oracle' * X_oracle + n * 1e-12 * I_julia(k)) \ (X_oracle' * y)
+                w_o = zeros(d)
+                w_o[1:k] = w_oracle
+                oracle_vec[irep] = (1.0 / n) * sum((X * (w_o - wast)).^2)
+            end
+
+            # Lasso path
+            w = zeros(d)
+            L = maximum(real(eigvals(X'*X / n)))
+            for (ilambda, lambda) in enumerate(lambdas)
+                maxiter = 20
+                for iter in 1:maxiter
+                    grad = (1.0 / n) * X' * (X * w - y)
+                    w -= (1.0 / L) * grad
+                    w = sign.(w) .* max.(abs.(w) .- lambda / L, 0.0)
+                end
+                lasso_matrix[ilambda, irep] = (1.0 / n) * sum((X * (w - wast)).^2)
+            end
+
+            # Ridge
+            for (ilambda, lambda) in enumerate(lambdas)
+                w_ridge = (X' * X + n * lambda * I_julia(d)) \ (X' * y)
+                ridge_matrix[ilambda, irep] = (1.0 / n) * sum((X * (w_ridge - wast)).^2)
+            end
+
+            # OMP
+            omp_matrix[:, irep] = run_omp(X, y, wast, n, d)
+        end
+
+        perf_lassos[id] = minimum(mean(lasso_matrix, dims=2))
+        perf_ridges[id] = minimum(mean(ridge_matrix, dims=2))
+        perf_omps[id] = minimum(mean(omp_matrix, dims=2))
+        perf_oracles[id] = mean(oracle_vec)
+        perf_zeros[id] = mean(zero_vec)
+    end
+
+    return ds, perf_lassos, perf_ridges, perf_omps, perf_oracles, perf_zeros
+end
+```
+
+```{julia}
+# Run both experiments (non-rotated and rotated)
+# Using nrep=64 to speed up calculation, since we don't execute and want to be efficient
+ds, lasso_nr, ridge_nr, omp_nr, oracle_nr, zero_nr = run_experiment(rotated=false, nrep=64)
+_, lasso_r, ridge_r, omp_r, oracle_r, zero_r = run_experiment(rotated=true, nrep=64)
+```
+
+```{julia}
+fig = Figure(size=(1200, 600), fontsize=18)
+
+# Col 1: Non-rotated
+ax1 = Axis(fig[1, 1], xlabel="log2(d)", ylabel="mean square error",
+           title="Non-rotated data (expected sparsity)", limits=((2, 8), (0, 4.1)))
+lines!(ax1, log2.(ds), lasso_nr, color=red, linewidth=2, label="Lasso")
+lines!(ax1, log2.(ds), ridge_nr, color=blue, linewidth=2, label="Ridge")
+lines!(ax1, log2.(ds), omp_nr, color=:black, linewidth=2, label="OMP")
+lines!(ax1, log2.(ds), oracle_nr, color=green, linewidth=2, label="Oracle")
+lines!(ax1, log2.(ds), zero_nr, color=teal, linewidth=2, label="Zero")
+axislegend(ax1, position=:lt)
+
+# Col 2: Rotated
+ax2 = Axis(fig[1, 2], xlabel="log2(d)", ylabel="mean square error",
+           title="Rotated data (no expected sparsity)", limits=((2, 8), (0, 4.1)))
+lines!(ax2, log2.(ds), lasso_r, color=red, linewidth=2, label="Lasso")
+lines!(ax2, log2.(ds), ridge_r, color=blue, linewidth=2, label="Ridge")
+lines!(ax2, log2.(ds), omp_r, color=:black, linewidth=2, label="OMP")
+lines!(ax2, log2.(ds), oracle_r, color=green, linewidth=2, label="Oracle")
+lines!(ax2, log2.(ds), zero_r, color=teal, linewidth=2, label="Zero")
+axislegend(ax2, position=:lt)
+
+fig
+```

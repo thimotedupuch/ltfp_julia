@@ -1,0 +1,159 @@
+---
+title : Figure 14.4
+subtitle : Comparison of LDA with a full covariance matrix, LDA with a diagonal covariance matrix, and logistic regression
+author : Thimoté Dupuch
+date : today
+format:
+  html:
+    embed-resources: true
+    theme:
+      light: zephyr
+      dark: darkly
+engine: julia
+---
+
+```{julia}
+#| echo : false
+#| output : false
+using Pkg; Pkg.activate("../.."); Pkg.status()
+```
+
+```{julia}
+#| output : false
+using CairoMakie, Statistics, Random, LinearAlgebra
+```
+
+```{julia}
+#| output : false
+#| echo : false
+CairoMakie.set_theme!(theme_latexfonts())
+CairoMakie.activate!(type = "svg")
+```
+
+```{julia}
+#| output : false
+blue, orange, green, pink, teal, red, yellow = Makie.wong_colors()
+```
+
+```{julia}
+Random.seed!(1)
+
+function fit_lda(X1, X0)
+    n1, d = size(X1)
+    n0 = size(X0, 1)
+    n = n1 + n0
+    mu1 = vec(mean(X1, dims=1))
+    mu0 = vec(mean(X0, dims=1))
+    Sigma1 = (X1 .- mu1')' * (X1 .- mu1') / n1
+    Sigma0 = (X0 .- mu0')' * (X0 .- mu0') / n0
+    Sigma = (n0/n) * Sigma0 + (n1/n) * Sigma1
+    w = Sigma \ (mu1 - mu0)
+    b = -0.5 * dot(mu1 + mu0, w) + log(n1 / n0)
+    return w, b
+end
+
+function fit_lda_diag(X1, X0)
+    n1, d = size(X1)
+    n0 = size(X0, 1)
+    n = n1 + n0
+    mu1 = vec(mean(X1, dims=1))
+    mu0 = vec(mean(X0, dims=1))
+    Sigma1 = (X1 .- mu1')' * (X1 .- mu1') / n1
+    Sigma0 = (X0 .- mu0')' * (X0 .- mu0') / n0
+    Sigma = Diagonal(diag((n0/n) * Sigma0 + (n1/n) * Sigma1))
+    w = Sigma \ (mu1 - mu0)
+    b = -0.5 * dot(mu1 + mu0, w) + log(n1 / n0)
+    return w, b
+end
+
+function fit_logistic(X, y; λ=1e-12, max_iter=100, tol=1e-10)
+    n, d = size(X)
+    Xint = hcat(X, ones(n))
+    theta = zeros(d + 1)
+    for _ in 1:max_iter
+        eta = Xint * theta
+        mu = 1.0 ./ (1.0 .+ exp.(-eta))
+        gradient = Xint' * (y .- mu) .- λ .* theta
+        W = mu .* (1.0 .- mu)
+        H = -Xint' * (Xint .* W) - λ * I
+        theta = theta - H \ gradient
+        any(isnan, theta) && break
+        norm(gradient) < tol && break
+    end
+    return theta[1:d], theta[d+1]
+end
+
+compute_error(X, y, w, b) = mean(abs.((sign.(X * w .+ b) .+ 1) ./ 2 .- y))
+
+function run_experiment(n1, n0, d, ts, nrep)
+    nts = length(ts)
+    err_lda = zeros(nrep, nts)
+    err_lda_diag = zeros(nrep, nts)
+    err_logistic = zeros(nrep, nts)
+
+    for irep in 1:nrep
+        mu1ast = randn(d) * (2 / sqrt(d))
+        mu0ast = randn(d) * (2 / sqrt(d))
+        noise1_train = randn(n1, d)
+        noise0_train = randn(n0, d)
+        noise1_test  = randn(n1, d)
+        noise0_test  = randn(n0, d)
+
+        for (it, t) in enumerate(ts)
+            Sigma_sqrt1 = exp(-t * randn(d, d) / 8)
+            Sigma_sqrt0 = exp(-t * randn(d, d) / 8)
+
+            X1 = mu1ast' .+ noise1_train * Sigma_sqrt1
+            X0 = mu0ast' .+ noise0_train * Sigma_sqrt0
+            X = vcat(X1, X0)
+            y = vcat(ones(n1), zeros(n0))
+
+            X1_test = mu1ast' .+ noise1_test * Sigma_sqrt1
+            X0_test = mu0ast' .+ noise0_test * Sigma_sqrt0
+            X_test = vcat(X1_test, X0_test)
+            y_test = vcat(ones(n1), zeros(n0))
+
+            w, b = fit_lda(X1, X0)
+            err_lda[irep, it] = compute_error(X_test, y_test, w, b)
+
+            w, b = fit_lda_diag(X1, X0)
+            err_lda_diag[irep, it] = compute_error(X_test, y_test, w, b)
+
+            w, b = fit_logistic(X, y)
+            err_logistic[irep, it] = compute_error(X_test, y_test, w, b)
+        end
+    end
+
+    return vec(mean(err_lda, dims=1)), vec(mean(err_lda_diag, dims=1)), vec(mean(err_logistic, dims=1))
+end
+
+ts = 0:0.1:1
+d = 50
+
+Random.seed!(2)
+err_lda_1, err_diag_1, err_log_1 = run_experiment(50, 50, d, ts, 100)
+
+Random.seed!(2)
+err_lda_2, err_diag_2, err_log_2 = run_experiment(500, 500, d, ts, 50)
+
+fig = Figure(size=(800, 400))
+
+ax1 = Axis(
+    fig[1, 1], title=L"d = 50, \ n = 50",
+    xlabel="lack of independence", ylabel="Error rate", limits=(0, 1, 0, 0.23))
+lines!(ax1, ts, err_diag_1, linewidth=2, color=red, label="LDA Diagonal")
+lines!(ax1, ts, err_lda_1, linewidth=2, color=blue, label="LDA")
+lines!(ax1, ts, err_log_1, linewidth=2, color=:black, label="logistic")
+axislegend(ax1, position=:lb)
+
+ax2 = Axis(
+    fig[1, 2], title=L"d = 50, \ n = 500",
+    xlabel="lack of independence", ylabel="Error rate", limits=(0, 1, 0, 0.23))
+lines!(ax2, ts, err_diag_2, linewidth=2, color=red, label="LDA Diagonal")
+lines!(ax2, ts, err_lda_2, linewidth=2, color=blue, label="LDA")
+lines!(ax2, ts, err_log_2, linewidth=2, color=:black, label="logistic")
+axislegend(ax2, position=:lb)
+
+fig
+
+```

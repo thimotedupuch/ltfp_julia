@@ -1,0 +1,194 @@
+---
+title : "Figure 5.4"
+subtitle : "Comparison of step-sizes for SGD for logistic regression"
+author : "Thimoté Dupuch"
+date : today
+format:
+  html:
+    embed-resources: true
+    theme:
+      light: zephyr
+      dark: darkly
+engine: julia
+---
+
+```{julia}
+#| echo : false
+#| output : false
+using Pkg
+Pkg.activate("../..")
+```
+
+```{julia}
+#| output : false
+using LinearAlgebra, Random, Statistics, CairoMakie
+```
+
+```{julia}
+#| output : false
+#| echo : false
+CairoMakie.set_theme!(theme_latexfonts())
+CairoMakie.activate!(type = "svg")
+```
+
+```{julia}
+#| output : false
+blue, orange, green, pink, teal, red, yellow = Makie.wong_colors()
+```
+
+```{julia}
+#| output : false
+function run_experiment(n_total; seed=1, d=40, number_of_passes=50)
+    rng = MersenneTwister(seed)
+
+    # Generate H
+    H_rand = randn(rng, d, d)
+    U, _, _ = svd(H_rand)
+    H = U * Diagonal(1.0 ./ (1:d)) * U'
+    Hsqrt = U * Diagonal(1.0 ./ sqrt.(1:d)) * U'
+
+    # Generate data
+    X_all = randn(rng, n_total, d) * Hsqrt
+    w0 = randn(rng, d)
+    w0 = w0 / sqrt(dot(w0, H * w0))
+    y_all = sign.(X_all * w0 + randn(rng, n_total))
+
+    R2 = maximum(sum(X_all.^2, dims=2))
+
+    # Split train/test
+    n = div(n_total, 2)
+    mu = R2 / n_total
+
+    Xtest = X_all[n+1:2*n, :]
+    ytest = y_all[n+1:2*n]
+    X = X_all[1:n, :]
+    y = y_all[1:n]
+
+    L = maximum(real(eigvals(X' * X / n)))
+
+    # Iteration details
+    tostore = 1:div(n, 10):(number_of_passes * n)
+    tostore_set = Set(tostore)
+
+    # --- SGD ---
+    w = zeros(d)
+    wave = zeros(d)
+    functionval_sc = Float64[]
+    functionval_sc_test = Float64[]
+
+    maxiter_sto = number_of_passes * n
+    for iter in 1:maxiter_sto
+        if iter in tostore_set
+            push!(functionval_sc, mean(log.(1.0 .+ exp.(-y .* (X * w)))) + mu/2 * sum(w.^2))
+            push!(functionval_sc_test, mean(log.(1.0 .+ exp.(-ytest .* (Xtest * w)))))
+        end
+
+        it = rand(rng, 1:n)
+        temp = dot(X[it, :], w) * y[it]
+        step = 1.0 / (R2 * sqrt(iter + 1) + mu * (iter + 1))
+        grad = mu * w - X[it, :] * (y[it] / (1.0 + exp(temp)))
+        w -= step * grad
+        wave = (1.0 - 1.0/iter) * wave + w / iter
+    end
+
+    # --- GD ---
+    w = zeros(d)
+    maxiter_det = number_of_passes + 1
+    functionval_sc_det = Float64[]
+    functionval_sc_det_test = Float64[]
+
+    for iter in 1:maxiter_det
+        push!(functionval_sc_det, mean(log.(1.0 .+ exp.(-y .* (X * w)))) + mu/2 * sum(w.^2))
+        push!(functionval_sc_det_test, mean(log.(1.0 .+ exp.(-ytest .* (Xtest * w)))))
+
+        temp = (X * w) .* y
+        grad = mu * w - (1.0 / n) * X' * (y ./ (1.0 .+ exp.(temp)))
+        w -= (1.0 / L) * grad
+    end
+
+    # --- SAGA ---
+    w = zeros(d)
+    functionval_saga = Float64[]
+    functionval_saga_test = Float64[]
+
+    temp = (X * w) .* y
+    zs = X' .* (-y ./ (1.0 .+ exp.(temp)))' .+ mu * w
+    meanzs = mean(zs, dims=2)[:, 1]
+
+    maxiter_saga = number_of_passes * n * 2
+    # SAGA stores values at the same indices but we only monitor up to 4*number_of_passes*n in Matlab
+    tostore_saga_set = Set(1:div(n, 10):(number_of_passes * n))
+
+    optvalue = 0.0
+    for iter in 1:maxiter_saga
+        if iter in tostore_saga_set
+            push!(functionval_saga, mean(log.(1.0 .+ exp.(-y .* (X * w)))) + mu/2 * sum(w.^2))
+            push!(functionval_saga_test, mean(log.(1.0 .+ exp.(-ytest .* (Xtest * w)))))
+        end
+
+        if iter == maxiter_saga
+            optvalue = mean(log.(1.0 .+ exp.(-y .* (X * w)))) + mu/2 * sum(w.^2)
+        end
+
+        it = rand(rng, 1:n)
+        temp = dot(X[it, :], w) * y[it]
+        gradloc = mu * w - X[it, :] * (y[it] / (1.0 + exp(temp)))
+
+        w -= (1.0 / (3.0 * R2)) * (gradloc - zs[:, it] + meanzs)
+        meanzs += (gradloc - zs[:, it]) / n
+        zs[:, it] = gradloc
+    end
+
+    return (
+        tostore = collect(tostore) ./ n,
+        sc_train = functionval_sc,
+        sc_test = functionval_sc_test,
+        saga_train = functionval_saga,
+        saga_test = functionval_saga_test,
+        gd_train = functionval_sc_det,
+        gd_test = functionval_sc_det_test,
+        optvalue = optvalue
+    )
+end
+```
+
+```{julia}
+res_low = run_experiment(2000)
+res_high = run_experiment(20000)
+```
+
+```{julia}
+fig = Figure(size=(1200, 900), fontsize=18)
+
+# Row 1: n = 1000
+ax1 = Axis(fig[1, 1], xlabel="effective passes", ylabel=L"\log_{10}[F(\theta_t) - F(\theta_*)]",
+           title="Training objective - n = 1000", limits=(0, 50, -10, -0.5))
+lines!(ax1, res_low.tostore, log10.(max.(res_low.sc_train .- res_low.optvalue, 1e-12)), color=blue, linewidth=2, label="SGD")
+lines!(ax1, res_low.tostore, log10.(max.(res_low.saga_train .- res_low.optvalue, 1e-12)), color=red, linewidth=2, label="SAGA")
+lines!(ax1, 0:50, log10.(max.(res_low.gd_train .- res_low.optvalue, 1e-12)), color=:black, linewidth=2, label="GD")
+axislegend(ax1, position=:rb)
+
+ax2 = Axis(fig[1, 2], xlabel="effective passes", ylabel=L"F_{test}(\theta_t)",
+           title="Expected risk - n = 1000", limits=(0, 50, 0.4, 0.7))
+lines!(ax2, res_low.tostore, res_low.sc_test, color=blue, linewidth=2, label="SGD")
+lines!(ax2, res_low.tostore, res_low.saga_test, color=red, linewidth=2, label="SAGA")
+lines!(ax2, 0:50, res_low.gd_test, color=:black, linewidth=2, label="GD")
+axislegend(ax2, position=:rt)
+
+# Row 2: n = 10000
+ax3 = Axis(fig[2, 1], xlabel="effective passes", ylabel=L"\log_{10}[F(\theta_t) - F(\theta_*)]",
+           title="Training objective - n = 10000", limits=(0, 50, -10, -0.5))
+lines!(ax3, res_high.tostore, log10.(max.(res_high.sc_train .- res_high.optvalue, 1e-12)), color=blue, linewidth=2, label="SGD")
+lines!(ax3, res_high.tostore, log10.(max.(res_high.saga_train .- res_high.optvalue, 1e-12)), color=red, linewidth=2, label="SAGA")
+lines!(ax3, 0:50, log10.(max.(res_high.gd_train .- res_high.optvalue, 1e-12)), color=:black, linewidth=2, label="GD")
+axislegend(ax3, position=:rb)
+
+ax4 = Axis(fig[2, 2], xlabel="effective passes", ylabel=L"F_{test}(\theta_t)",
+           title="Expected risk - n = 10000", limits=(0, 50, 0.4, 0.7))
+lines!(ax4, res_high.tostore, res_high.sc_test, color=blue, linewidth=2, label="SGD")
+lines!(ax4, res_high.tostore, res_high.saga_test, color=red, linewidth=2, label="SAGA")
+lines!(ax4, 0:50, res_high.gd_test, color=:black, linewidth=2, label="GD")
+axislegend(ax4, position=:rt)
+
+fig
+```

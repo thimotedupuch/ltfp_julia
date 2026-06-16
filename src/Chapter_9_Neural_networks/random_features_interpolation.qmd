@@ -1,0 +1,113 @@
+---
+title : "Figure 9.2"
+subtitle : "Random features - kernels"
+author : "Thimoté Dupuch"
+date : today
+format:
+  html:
+    embed-resources: true
+    theme:
+      light: zephyr
+      dark: darkly
+engine: julia
+---
+
+```{julia}
+#| echo : false
+#| output : false
+using Pkg
+Pkg.activate("../..")
+```
+
+```{julia}
+#| output : false
+using LinearAlgebra, Random, Statistics, CairoMakie, SpecialFunctions
+```
+
+```{julia}
+#| output : false
+#| echo : false
+CairoMakie.set_theme!(theme_latexfonts())
+CairoMakie.activate!(type = "svg")
+```
+
+```{julia}
+#| output : false
+blue, orange, green, pink, teal, red, yellow = Makie.wong_colors()
+```
+
+```{julia}
+#| output : false
+function run_random_features(m, x, y, xtest, n, ntest, d, rng)
+    nrep = 10
+    yests = zeros(ntest, nrep)
+    for irep in 1:nrep
+        W = randn(rng, m, d)
+        for i in 1:m
+            W[i, :] ./= norm(W[i, :])
+        end
+        b = rand(rng, m) .* 2.0 .- 1.0
+
+        Phi = max.(x * W' .+ b', 0.0)
+        Phitest = max.(xtest * W' .+ b', 0.0)
+
+        K = Phi * Phi' / m
+        Ktest = Phitest * Phi' / m
+
+        alpha = (K + 1e-12 * I) \ y
+        yests[:, irep] = Ktest * alpha
+    end
+    return yests
+end
+```
+
+```{julia}
+rng = MersenneTwister(0)
+d = 1
+n = 10
+x = rand(rng, n) .* 2.0 .- 1.0
+y = randn(rng, n)
+xtest = collect(-1:0.001:1)
+ntest = length(xtest)
+
+# Spline kernel
+D_train = (x .- x').^2
+D_test = (xtest .- x').^2
+
+fac = gamma(2) * gamma(d/2) / (gamma(d/2 + 1.5) * gamma(0.5))
+K_spline = 1/6 .+ x * x' / (2.0 * d) + D_train.^1.5 / 24.0 * fac
+Ktest_spline = 1/6 .+ xtest * x' / (2.0 * d) + D_test.^1.5 / 24.0 * fac
+
+alpha = K_spline \ y
+yest_spline = Ktest_spline * alpha
+
+yests_20 = run_random_features(20, x, y, xtest, n, ntest, d, rng)
+yests_100 = run_random_features(100, x, y, xtest, n, ntest, d, rng)
+yests_200 = run_random_features(200, x, y, xtest, n, ntest, d, rng)
+```
+
+```{julia}
+fig = Figure(size=(1500, 500), fontsize=18)
+
+ms = [20, 100, 200]
+yests_all = [yests_20, yests_100, yests_200]
+
+for (i, m) in enumerate(ms)
+    ax = Axis(fig[1, i], xlabel="x", ylabel="y", title="m = $m", limits=((-1, 1), (-10, 10)))
+
+    # Plot random features replicas
+    for r in 1:10
+        lines!(ax, xtest, yests_all[i][:, r], color=orange, linewidth=1)
+    end
+
+    # Plot spline kernel
+    lines!(ax, xtest, yest_spline, color=blue, linewidth=3, label="spline kernel")
+
+    # Plot data points
+    scatter!(ax, x, y, color=green, markersize=16, label="data")
+
+    axislegend(ax, position=:rt)
+end
+
+fig
+```

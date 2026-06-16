@@ -1,0 +1,141 @@
+---
+title : "Figure 9.1"
+subtitle : "Global convergence of ReLU neural networks"
+author : "Thimoté Dupuch"
+date : today
+format:
+  html:
+    embed-resources: true
+    theme:
+      light: zephyr
+      dark: darkly
+engine: julia
+---
+
+```{julia}
+#| echo : false
+#| output : false
+using Pkg
+Pkg.activate("../..")
+```
+
+```{julia}
+#| output : false
+using LinearAlgebra, Random, Statistics, CairoMakie
+```
+
+```{julia}
+#| output : false
+#| echo : false
+CairoMakie.set_theme!(theme_latexfonts())
+CairoMakie.activate!(type = "svg")
+```
+
+```{julia}
+#| output : false
+blue, orange, green, pink, teal, red, yellow = Makie.wong_colors()
+```
+
+```{julia}
+#| output : false
+function launch_training_relu_nn(X, y, Xtest, ytest, m, batch_size, maxiter, gamma, rng)
+    n = size(X, 1)
+    d = size(X, 2)
+    ntest = size(Xtest, 1)
+
+    # Initialize weights
+    w = randn(rng, d, m)
+    for j in 1:m
+        w[:, j] ./= norm(w[:, j])
+    end
+    b = rand(rng, 1, m) .* 2.0 .- 1.0
+    eta = randn(rng, 1, m) ./ sqrt(m / 2.0)
+    eta_bias = 0.0
+
+    test_errors = Float64[]
+
+    for iter in 1:maxiter
+        if mod(iter, 100) == 1
+            hidden_test = max.(Xtest * w .+ b, 0.0)
+            ypred_test = hidden_test * eta' .+ eta_bias
+            push!(test_errors, mean((ypred_test .- ytest).^2))
+        end
+
+        idx = [mod1((iter - 1) * batch_size + j, n) for j in 1:batch_size]
+        Xbatch = X[idx, :]
+        ybatch = y[idx]
+
+        preact = Xbatch * w .+ b
+        hidden = max.(preact, 0.0)
+        hiddender = Float64.(preact .> 0.0)
+
+        ypred = hidden * eta' .+ eta_bias
+        diff = ypred .- ybatch
+
+        gradeta = diff' * hidden
+        gradb = diff' * (hiddender .* eta)
+        gradw = Xbatch' * (diff .* (hiddender .* eta))
+
+        w -= (gamma / batch_size) * gradw
+        b -= (gamma / batch_size) * gradb
+        eta -= (gamma / batch_size) * gradeta
+    end
+    return w, b, eta, eta_bias, test_errors
+end
+
+function triangle_target(X)
+    return 4.0 .* abs.(X .+ 1.0 .- 0.25 .- floor.(X .+ 1.0 .- 0.25) .- 0.5) .- 1.0
+end
+```
+
+```{julia}
+# Run experiment
+rng = MersenneTwister(0)
+maxiter = 400_000
+batch_size = 16
+n = 128
+ntest = 1024
+
+X = rand(rng, n, 1) .* 2.0 .- 1.0
+Xtest = collect(0:ntest-1) ./ (ntest - 1) .* 2.0 .- 1.0
+y = triangle_target(X)
+ytest = triangle_target(Xtest)
+
+ms = [5, 20, 100]
+restarts = 20
+
+results = Dict()
+
+for m in ms
+    results[m] = []
+    for r in 1:restarts
+        w, b, eta, eta_bias, test_errs = launch_training_relu_nn(
+            X, y, Xtest, ytest, m, batch_size, maxiter, 0.005, rng
+        )
+        hidden_test = max.(Xtest * w .+ b, 0.0)
+        ypred_test = hidden_test * eta' .+ eta_bias
+        push!(results[m], (pred = ypred_test[:, 1], errs = test_errs))
+    end
+end
+```
+
+```{julia}
+fig = Figure(size=(1200, 800), fontsize=18)
+
+for (im, m) in enumerate(ms)
+    # Subplot row 1: Prediction functions
+    ax1 = Axis(fig[1, im], xlabel="x", ylabel="y", title="predictions - m = $m", limits=((0, 1), (-1.5, 1.9)))
+    lines!(ax1, Xtest, ytest, color=red, linewidth=4, label="target")
+    for r in 1:restarts
+        lines!(ax1, Xtest, results[m][r].pred, color=blue, linewidth=1)
+    end
+
+    # Subplot row 2: Test errors
+    ax2 = Axis(fig[2, im], xlabel="iterations/100", ylabel="log10(test error)", title="test errors - m = $m", limits=((0, maxiter/100), (-4, 0)))
+    for r in 1:restarts
+        lines!(ax2, 0:length(results[m][r].errs)-1, log10.(max.(results[m][r].errs, 1e-10)), color=blue, linewidth=1)
+    end
+end
+
+fig
+```

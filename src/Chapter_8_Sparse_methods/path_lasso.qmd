@@ -1,0 +1,86 @@
+---
+title : "Figure 8.1"
+subtitle : "Regularization path of the Lasso"
+author : "Thimoté Dupuch"
+date : today
+format:
+  html:
+    embed-resources: true
+    theme:
+      light: zephyr
+      dark: darkly
+engine: julia
+---
+
+```{julia}
+#| echo : false
+#| output : false
+using Pkg
+Pkg.activate("../..")
+```
+
+```{julia}
+#| output : false
+using LinearAlgebra, Random, Statistics, CairoMakie
+```
+
+```{julia}
+#| output : false
+#| echo : false
+CairoMakie.set_theme!(theme_latexfonts())
+CairoMakie.activate!(type = "svg")
+```
+
+```{julia}
+#| output : false
+blue, orange, green, pink, teal, red, yellow = Makie.wong_colors()
+```
+
+```{julia}
+#| output : false
+function run_lasso_path(; seed=8, n=32, d=12, k=4, std_noise=1.0)
+    rng = MersenneTwister(seed)
+    X = randn(rng, n, d)
+    wast = zeros(d)
+    wast[1:k] = sign.(randn(rng, k))
+    y = X * wast + std_noise * sqrt(k) * randn(rng, n)
+
+    lambdas = collect(1.5:-0.0005:0.0)
+    L = maximum(real(eigvals(X'*X / n)))
+
+    ws = zeros(d, length(lambdas))
+    w = zeros(d)
+
+    for (ilambda, lambda) in enumerate(lambdas)
+        maxiter = 100
+        for iter in 1:maxiter
+            grad = (1.0 / n) * X' * (X * w - y)
+            w -= (1.0 / L) * grad
+            w = sign.(w) .* max.(abs.(w) .- lambda / L, 0.0)
+        end
+        ws[:, ilambda] = w
+    end
+
+    # Filter to when number of active components changes to match matlab line style
+    nactive = sum(abs.(ws) .> 1e-4, dims=1)[:]
+    diffs = abs.(nactive[2:end] .- nactive[1:end-1])
+    ind = [findall(diffs .> 0)..., length(lambdas)]
+
+    return lambdas[ind], ws[:, ind]
+end
+```
+
+```{julia}
+lambdas_plot, ws_plot = run_lasso_path()
+```
+
+```{julia}
+fig = Figure(size=(800, 600), fontsize=18)
+ax = Axis(fig[1, 1], xlabel="regularization parameter", ylabel="weights", title="Lasso Path")
+
+for i in 1:size(ws_plot, 1)
+    lines!(ax, lambdas_plot, ws_plot[i, :], linewidth=2)
+end
+
+fig
+```

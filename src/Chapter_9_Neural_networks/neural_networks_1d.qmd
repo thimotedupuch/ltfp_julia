@@ -1,0 +1,139 @@
+---
+title : "Figure 9.3"
+subtitle : "Neural networks fitting"
+author : "Thimoté Dupuch"
+date : today
+format:
+  html:
+    embed-resources: true
+    theme:
+      light: zephyr
+      dark: darkly
+engine: julia
+---
+
+```{julia}
+#| echo : false
+#| output : false
+using Pkg
+Pkg.activate("../..")
+```
+
+```{julia}
+#| output : false
+using LinearAlgebra, Random, Statistics, CairoMakie
+```
+
+```{julia}
+#| output : false
+#| echo : false
+CairoMakie.set_theme!(theme_latexfonts())
+CairoMakie.activate!(type = "svg")
+```
+
+```{julia}
+#| output : false
+blue, orange, green, pink, teal, red, yellow = Makie.wong_colors()
+```
+
+```{julia}
+#| output : false
+function launch_training_relu_nn(X, y, Xtest, ytest, m, batch_size, maxiter, gamma, rng)
+    n = size(X, 1)
+    d = size(X, 2)
+    ntest = size(Xtest, 1)
+
+    w = randn(rng, d, m)
+    for j in 1:m
+        w[:, j] ./= norm(w[:, j])
+    end
+    b = rand(rng, 1, m) .* 2.0 .- 1.0
+    eta = randn(rng, 1, m) ./ sqrt(m / 2.0)
+    eta_bias = 0.0
+
+    for iter in 1:maxiter
+        idx = [mod1((iter - 1) * batch_size + j, n) for j in 1:batch_size]
+        Xbatch = X[idx, :]
+        ybatch = y[idx]
+
+        preact = Xbatch * w .+ b
+        hidden = max.(preact, 0.0)
+        hiddender = Float64.(preact .> 0.0)
+
+        ypred = hidden * eta' .+ eta_bias
+        diff = ypred .- ybatch
+
+        gradeta = diff' * hidden
+        gradb = diff' * (hiddender .* eta)
+        gradw = Xbatch' * (diff .* (hiddender .* eta))
+
+        w -= (gamma / batch_size) * gradw
+        b -= (gamma / batch_size) * gradb
+        eta -= (gamma / batch_size) * gradeta
+    end
+    return w, b, eta, eta_bias
+end
+
+function get_target(X, idata)
+    if idata == 1
+        return sin.(2.0 * pi * X)
+    elseif idata == 2
+        return sign.(sin.(2.0 * pi * X))
+    elseif idata == 3
+        return (max.(X ./ 2.0, 0.0) .- 0.25) .* 4.0
+    else
+        return 4.0 .* abs.(X .+ 1.0 .- 0.25 .- floor.(X .+ 1.0 .- 0.25) .- 0.5) .- 1.0
+    end
+end
+```
+
+```{julia}
+rng = MersenneTwister(1)
+n = 128
+ntest = 1024
+maxiter = 400_000
+batch_size = 16
+gamma = 0.005
+std_noise = 0.2
+
+X = rand(rng, n, 1) .* 2.0 .- 1.0
+Xtest = collect(0:ntest-1) ./ (ntest - 1) .* 2.0 .- 1.0
+
+# Store plots data
+plot_data = Dict()
+
+for idata in 1:4
+    y = get_target(X, idata) .+ std_noise * randn(rng, n)
+    ytest = get_target(Xtest, idata)
+
+    for m in [5, 32, 100]
+        w, b, eta, eta_bias = launch_training_relu_nn(
+            X, y, Xtest, ytest, m, batch_size, maxiter, gamma, rng
+        )
+        hidden_test = max.(Xtest * w .+ b, 0.0)
+        ypred_test = hidden_test * eta' .+ eta_bias
+
+        plot_data[(idata, m)] = (X=X[:, 1], y=y, Xtest=Xtest, ytest=ytest, ypred=ypred_test[:, 1])
+    end
+end
+```
+
+```{julia}
+fig = Figure(size=(1600, 1200), fontsize=18)
+ms = [5, 32, 100]
+
+for (im, m) in enumerate(ms)
+    for idata in 1:4
+        data = plot_data[(idata, m)]
+        ax = Axis(fig[im, idata], xlabel="x", ylabel="y", title="m = $m", limits=((-1, 1), (-1.5, 2.0)))
+
+        lines!(ax, data.Xtest, data.ytest, color=red, linewidth=2, label="target")
+        lines!(ax, data.Xtest, data.ypred, color=blue, linewidth=2, label="prediction")
+        scatter!(ax, data.X, data.y, color=:black, marker=:x, markersize=6)
+
+        axislegend(ax, position=:rt)
+    end
+end
+
+fig
+```

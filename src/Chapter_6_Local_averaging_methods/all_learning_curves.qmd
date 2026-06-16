@@ -1,0 +1,220 @@
+---
+title : "Figure 6.5"
+subtitle : "Learning curves for local averaging"
+author : "Thimoté Dupuch"
+date : today
+format:
+  html:
+    embed-resources: true
+    theme:
+      light: zephyr
+      dark: darkly
+engine: julia
+---
+
+```{julia}
+#| echo : false
+#| output : false
+using Pkg
+Pkg.activate("../..")
+```
+
+```{julia}
+#| output : false
+using LinearAlgebra, Random, Statistics, CairoMakie
+```
+
+```{julia}
+#| output : false
+#| echo : false
+CairoMakie.set_theme!(theme_latexfonts())
+CairoMakie.activate!(type = "svg")
+```
+
+```{julia}
+#| output : false
+blue, orange, green, pink, teal, red, yellow = Makie.wong_colors()
+```
+
+```{julia}
+#| output : false
+target_fun(x) = 0.5 .- abs.(x .- 0.5)
+
+# --- 1. Regressogram Learning Curve ---
+function run_regressogram_experiment(; seed=1, n=100, std_noise=0.1, nrep=32)
+    rng = MersenneTwister(seed)
+    Jcards = [1, 2, 3, collect(4:4:200)...]
+
+    train_errs = zeros(nrep, length(Jcards))
+    test_errs = zeros(nrep, length(Jcards))
+
+    Xtest = collect(0:0.01:1)
+    ytest = target_fun(Xtest)
+
+    for irep in 1:nrep
+        Xtrain = rand(rng, n)
+        ytrain_bias = target_fun(Xtrain)
+        ytrain_var = std_noise * randn(rng, n)
+        ytrain = ytrain_bias + ytrain_var
+
+        for (icard, Jcard) in enumerate(Jcards)
+            bintest = ceil.(Int, Xtest .* Jcard)
+            bintest[bintest .== 0] .= 1
+            bintrain = ceil.(Int, Xtrain .* Jcard)
+            bintrain[bintrain .== 0] .= 1
+
+            ftest = zeros(length(Xtest))
+            ftest_bias = zeros(length(Xtest))
+            ftest_var = zeros(length(Xtest))
+
+            for itest in 1:length(Xtest)
+                bin = bintest[itest]
+                ind = findall(bintrain .== bin)
+                if isempty(ind)
+                    ftest[itest] = mean(ytrain)
+                    ftest_bias[itest] = mean(ytrain_bias)
+                    ftest_var[itest] = mean(ytrain_var)
+                else
+                    ftest[itest] = mean(ytrain[ind])
+                    ftest_bias[itest] = mean(ytrain_bias[ind])
+                    ftest_var[itest] = mean(ytrain_var[ind])
+                end
+            end
+
+            ftrain = zeros(n)
+            for itrain in 1:n
+                bin = bintrain[itrain]
+                ind = findall(bintrain .== bin)
+                if isempty(ind)
+                    ftrain[itrain] = mean(ytrain)
+                else
+                    ftrain[itrain] = mean(ytrain[ind])
+                end
+            end
+
+            train_errs[irep, icard] = mean((ytrain .- ftrain).^2)
+            test_errs[irep, icard] = mean((ytest .- ftest).^2) + std_noise^2
+        end
+    end
+    return Jcards, train_errs, test_errs
+end
+
+# --- 2. k-NN Learning Curve ---
+function run_knn_experiment(; seed=1, n=100, std_noise=0.1, nrep=32)
+    rng = MersenneTwister(seed)
+    ks = 1:50
+
+    train_errs = zeros(nrep, length(ks))
+    test_errs = zeros(nrep, length(ks))
+
+    Xtest = collect(0:0.01:1)
+    ytest = target_fun(Xtest)
+
+    for irep in 1:nrep
+        Xtrain = rand(rng, n)
+        ytrain = target_fun(Xtrain) + std_noise * randn(rng, n)
+
+        for (ik, k) in enumerate(ks)
+            ftest = zeros(length(Xtest))
+            ftrain = zeros(n)
+
+            for itest in 1:length(Xtest)
+                x = Xtest[itest]
+                dists = abs.(Xtrain .- x)
+                idx = sortperm(dists)
+                ftest[itest] = mean(ytrain[idx[1:k]])
+            end
+
+            for itrain in 1:n
+                x = Xtrain[itrain]
+                dists = abs.(Xtrain .- x)
+                idx = sortperm(dists)
+                ftrain[itrain] = mean(ytrain[idx[1:k]])
+            end
+
+            train_errs[irep, ik] = mean((ytrain .- ftrain).^2)
+            test_errs[irep, ik] = mean((ytest .- ftest).^2) + std_noise^2
+        end
+    end
+    return ks, train_errs, test_errs
+end
+
+# --- 3. Nadaraya-Watson Learning Curve ---
+function run_nadaraya_experiment(; seed=1, n=100, std_noise=0.1, nrep=32)
+    rng = MersenneTwister(seed)
+    hs = 10.0 .^ (-4:0.125:1)
+
+    train_errs = zeros(nrep, length(hs))
+    test_errs = zeros(nrep, length(hs))
+
+    Xtest = collect(0:0.01:1)
+    ytest = target_fun(Xtest)
+
+    for irep in 1:nrep
+        Xtrain = rand(rng, n)
+        ytrain = target_fun(Xtrain) + std_noise * randn(rng, n)
+
+        for (ih, h) in enumerate(hs)
+            ftest = zeros(length(Xtest))
+            ftrain = zeros(n)
+
+            for itest in 1:length(Xtest)
+                x = Xtest[itest]
+                dists = abs.(x .- Xtrain)
+                # Subtract minimum distance for numerical stability
+                temp = exp.(-(dists .- minimum(dists)).^2 ./ (2.0 * h * h))
+                ftest[itest] = dot(temp, ytrain) / sum(temp)
+            end
+
+            for itrain in 1:n
+                x = Xtrain[itrain]
+                dists = abs.(x .- Xtrain)
+                # Subtract minimum distance for numerical stability
+                temp = exp.(-(dists .- minimum(dists)).^2 ./ (2.0 * h * h))
+                ftrain[itrain] = dot(temp, ytrain) / sum(temp)
+            end
+
+            train_errs[irep, ih] = mean((ytrain .- ftrain).^2)
+            test_errs[irep, ih] = mean((ytest .- ftest).^2) + std_noise^2
+        end
+    end
+    return log.(hs), train_errs, test_errs
+end
+```
+
+```{julia}
+# Run all experiments
+Jcards, reg_train, reg_test = run_regressogram_experiment()
+ks, knn_train, knn_test = run_knn_experiment()
+log_hs, nad_train, nad_test = run_nadaraya_experiment()
+```
+
+```{julia}
+fig = Figure(size=(1500, 500), fontsize=18)
+
+# Regressogram plot
+ax1 = Axis(fig[1, 1], xlabel="|J|", ylabel="errors", title="Regressogram", limits=((0, 200), (0, 0.04)))
+errorbars!(ax1, Jcards, mean(reg_train, dims=1)[:], std(reg_train, dims=1)[:], color=blue, whiskerwidth=6)
+lines!(ax1, Jcards, mean(reg_train, dims=1)[:], color=blue, linewidth=2, label="training")
+errorbars!(ax1, Jcards, mean(reg_test, dims=1)[:], std(reg_test, dims=1)[:], color=red, whiskerwidth=6)
+lines!(ax1, Jcards, mean(reg_test, dims=1)[:], color=red, linewidth=2, label="testing")
+axislegend(ax1, position=:rt)
+
+# k-NN plot
+ax2 = Axis(fig[1, 2], xlabel="k", ylabel="errors", title="k-nn", limits=((0, 50), (0, 0.04)))
+errorbars!(ax2, ks, mean(knn_train, dims=1)[:], std(knn_train, dims=1)[:], color=blue, whiskerwidth=6)
+lines!(ax2, ks, mean(knn_train, dims=1)[:], color=blue, linewidth=2, label="training")
+errorbars!(ax2, ks, mean(knn_test, dims=1)[:], std(knn_test, dims=1)[:], color=red, whiskerwidth=6)
+lines!(ax2, ks, mean(knn_test, dims=1)[:], color=red, linewidth=2, label="testing")
+axislegend(ax2, position=:rt)
+
+# Nadaraya-Watson plot
+ax3 = Axis(fig[1, 3], xlabel="log(h)", ylabel="errors", title="Nadaraya-Watson", limits=((minimum(log_hs), maximum(log_hs)), (0, 0.04)))
+errorbars!(ax3, log_hs, mean(nad_train, dims=1)[:], std(nad_train, dims=1)[:], color=blue, whiskerwidth=6)
+lines!(ax3, log_hs, mean(nad_train, dims=1)[:], color=blue, linewidth=2, label="training")
+errorbars!(ax3, log_hs, mean(nad_test, dims=1)[:], std(nad_test, dims=1)[:], color=red, whiskerwidth=6)
+lines!(ax3, log_hs, mean(nad_test, dims=1)[:], color=red, linewidth=2, label="testing")
+axislegend(ax3, position=:rt)
+
+fig
+```

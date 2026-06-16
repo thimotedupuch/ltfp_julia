@@ -1,0 +1,94 @@
+---
+title : "Figure 7.2"
+subtitle : "Minimum norm interpolator"
+author : "Thimoté Dupuch"
+date : today
+format:
+  html:
+    embed-resources: true
+    theme:
+      light: zephyr
+      dark: darkly
+engine: julia
+---
+
+```{julia}
+#| echo : false
+#| output : false
+using Pkg
+Pkg.activate("../..")
+```
+
+```{julia}
+#| output : false
+using LinearAlgebra, Random, Statistics, CairoMakie
+```
+
+```{julia}
+#| output : false
+#| echo : false
+CairoMakie.set_theme!(theme_latexfonts())
+CairoMakie.activate!(type = "svg")
+```
+
+```{julia}
+#| output : false
+blue, orange, green, pink, teal, red, yellow = Makie.wong_colors()
+```
+
+```{julia}
+rng = MersenneTwister(0)
+n = 10
+x = rand(rng, n) .* 2 .- 1
+y = randn(rng, n)
+xtest = collect(-1:0.001:1)
+
+# Pairwise squared distances matrices
+D_train = (x .- x').^2
+D_test = (xtest .- x').^2
+
+# 1. Gaussian kernel (alphak = 6)
+K1 = exp.(-D_train * 6)
+K1_test = exp.(-D_test * 6)
+alpha1 = K1 \ y
+yest1 = K1_test * alpha1
+
+# 2. Exponential kernel (alphak = 2)
+K2 = exp.(-sqrt.(D_train) * 2)
+K2_test = exp.(-sqrt.(D_test) * 2)
+alpha2 = K2 \ y
+yest2 = K2_test * alpha2
+
+# 3. Matern kernel (s=2, alphak = 2)
+K3 = (1.0 .+ sqrt.(D_train) * 2) .* exp.(-sqrt.(D_train) * 2)
+K3_test = (1.0 .+ sqrt.(D_test) * 2) .* exp.(-sqrt.(D_test) * 2)
+alpha3 = K3 \ y
+yest3 = K3_test * alpha3
+
+# 4. Matern kernel (s=3, alphak = 2)
+K4 = (1.0 .+ sqrt.(D_train) * 2 .+ D_train * 4 / 3) .* exp.(-sqrt.(D_train) * 2)
+K4_test = (1.0 .+ sqrt.(D_test) * 2 .+ D_test * 4 / 3) .* exp.(-sqrt.(D_test) * 2)
+alpha4 = K4 \ y
+yest4 = K4_test * alpha4
+```
+
+```{julia}
+fig = Figure(size=(800, 600), fontsize=18)
+ax = Axis(fig[1, 1], xlabel="x", ylabel="y", title="Interpolation Comparison", limits=((-1, 1), (-10, 10)))
+
+# In Matlab, colors are:
+# yest2 (Exp s=1) is magenta
+# yest3 (Matern s=2) is black
+# yest4 (Matern s=3) is red
+# yest1 (Gaussian) is blue
+lines!(ax, xtest, yest2, color=pink, linewidth=2, label="Exponential (s=1)")
+lines!(ax, xtest, yest3, color=:black, linewidth=2, label="Matern (s=2)")
+lines!(ax, xtest, yest4, color=red, linewidth=2, label="Matern (s=3)")
+lines!(ax, xtest, yest1, color=blue, linewidth=2, label="Gaussian")
+
+scatter!(ax, x, y, color=green, markersize=16, label="data")
+
+axislegend(ax, position=:rt)
+
+fig
+```

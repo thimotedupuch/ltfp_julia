@@ -1,0 +1,210 @@
+---
+title : "Figure 7.3"
+subtitle : "Comparison of kernels and target smoothness"
+author : "Thimoté Dupuch"
+date : today
+format:
+  html:
+    embed-resources: true
+    theme:
+      light: zephyr
+      dark: darkly
+engine: julia
+---
+
+```{julia}
+#| echo : false
+#| output : false
+using Pkg
+Pkg.activate("../..")
+```
+
+```{julia}
+#| output : false
+using LinearAlgebra, Random, Statistics, CairoMakie
+```
+
+```{julia}
+#| output : false
+#| echo : false
+CairoMakie.set_theme!(theme_latexfonts())
+CairoMakie.activate!(type = "svg")
+```
+
+```{julia}
+#| output : false
+blue, orange, green, pink, teal, red, yellow = Makie.wong_colors()
+```
+
+```{julia}
+#| output : false
+function get_kernel(X1, X2, kernel_type, alphak)
+    D = (X1 .- X2').^2
+    if kernel_type == 1       # Exponential (s=1)
+        return exp.(-sqrt.(D) * alphak)
+    elseif kernel_type == 2   # Matern (s=2)
+        return (1.0 .+ sqrt.(D) * alphak) .* exp.(-sqrt.(D) * alphak)
+    elseif kernel_type == 4   # Gaussian
+        return exp.(-D * alphak * 3.0)
+    end
+end
+
+function get_y(X, idata, std_noise, rng)
+    if idata == 1
+        return sin.(4.0 * pi * X) + std_noise * randn(rng, length(X))
+    else
+        return sign.(sin.(4.0 * pi * X)) + std_noise * randn(rng, length(X))
+    end
+end
+
+function get_y_test(X, idata)
+    if idata == 1
+        return sin.(4.0 * pi * X)
+    else
+        return sign.(sin.(4.0 * pi * X))
+    end
+end
+
+function affine_fit(x, y)
+    X = hcat(x, ones(length(x)))
+    theta = X \ y
+    return theta[1], theta[2]
+end
+
+function run_kernel_simulations(kernel_type)
+    rng = MersenneTwister(1)
+    ns = round.(Int, 2.0 .^ (2:0.25:10))
+    nrep = 20
+    lambdas = 10.0 .^ (2:-0.25:-12)
+    std_noise = 0.2
+
+    # We will accumulate excess risks for each idata
+    # valtests: (lambda_idx, n_idx, rep_idx, idata)
+    valtests = zeros(length(lambdas), length(ns), nrep, 2)
+
+    for idata in 1:2
+        for irep in 1:nrep
+            n_max = maximum(ns)
+            ntest = n_max * 4
+
+            Xfull = rand(rng, n_max)
+            Xtest = collect(0:ntest-1) ./ (ntest - 1)
+            yfull = get_y(Xfull, idata, std_noise, rng)
+            ytest = get_y_test(Xtest, idata)
+
+            for (in_idx, n) in enumerate(ns)
+                X = Xfull[1:n]
+                y = yfull[1:n]
+
+                alphak = 2.0
+                K = get_kernel(X, X, kernel_type, alphak)
+                Ktest = get_kernel(Xtest, X, kernel_type, alphak)
+
+                F = eigen(K)
+                u = F.vectors
+                e = F.values
+
+                uy = u' * y
+
+                for (ilambda, lambda) in enumerate(lambdas)
+                    alpha = u * ( (1.0 ./ (e .+ n * lambda)) .* uy )
+                    ytest_pred = Ktest * alpha
+                    valtests[ilambda, in_idx, irep, idata] = mean((ytest_pred .- ytest).^2)
+                end
+            end
+        end
+    end
+
+    # Also generate a single fit for n = 128
+    n_fit = 128
+    ntest_fit = 512
+    X_fit = rand(rng, n_fit)
+    Xtest_fit = collect(0:ntest_fit-1) ./ (ntest_fit - 1)
+
+    fits = []
+    for idata in 1:2
+        y_fit = get_y(X_fit, idata, std_noise, rng)
+        ytest_fit = get_y_test(Xtest_fit, idata)
+
+        K_fit = get_kernel(X_fit, X_fit, kernel_type, 2.0)
+        Ktest_fit = get_kernel(Xtest_fit, X_fit, kernel_type, 2.0)
+
+        F = eigen(K_fit)
+        u = F.vectors
+        e = F.values
+
+        valtest_fit = zeros(length(lambdas))
+        uy = u' * y_fit
+        for (ilambda, lambda) in enumerate(lambdas)
+            alpha = u * ( (1.0 ./ (e .+ n_fit * lambda)) .* uy )
+            ytest_pred = Ktest_fit * alpha
+            valtest_fit[ilambda] = mean((ytest_pred .- ytest_fit).^2)
+        end
+
+        _, best_lambda_idx = findmin(valtest_fit)
+        best_lambda = lambdas[best_lambda_idx]
+
+        alpha = u * ( (1.0 ./ (e .+ n_fit * best_lambda)) .* uy )
+        ytest_pred = Ktest_fit * alpha
+        push!(fits, (X = X_fit, y = y_fit, Xtest = Xtest_fit, ytest = ytest_fit, ypred = ytest_pred))
+    end
+
+    return ns, valtests, fits
+end
+```
+
+```{julia}
+# Run simulation for all three kernel types
+ns, valtests1, fits1 = run_kernel_simulations(1)
+_, valtests2, fits2 = run_kernel_simulations(2)
+_, valtests4, fits4 = run_kernel_simulations(4)
+```
+
+```{julia}
+fig = Figure(size=(1500, 1500), fontsize=18)
+
+# Helper function to plot a row
+function plot_row!(fig, row_idx, valtests, fits, kernel_title)
+    # Col 1: Smooth target
+    ax1 = Axis(fig[row_idx, 1], xlabel="x", ylabel="y", title="$kernel_title - Smooth target", limits=((0, 1), (-1.5, 2.0)))
+    scatter!(ax1, fits[1].X, fits[1].y, color=:black, marker=:x, markersize=8)
+    lines!(ax1, fits[1].Xtest, fits[1].ytest, color=red, linewidth=2, label="target")
+    lines!(ax1, fits[1].Xtest, fits[1].ypred, color=:black, linewidth=2, label="prediction")
+    axislegend(ax1, position=:rt)
+
+    # Col 2: Non-smooth target
+    ax2 = Axis(fig[row_idx, 2], xlabel="x", ylabel="y", title="$kernel_title - Non-smooth target", limits=((0, 1), (-1.5, 2.0)))
+    scatter!(ax2, fits[2].X, fits[2].y, color=:black, marker=:x, markersize=8)
+    lines!(ax2, fits[2].Xtest, fits[2].ytest, color=red, linewidth=2, label="target")
+    lines!(ax2, fits[2].Xtest, fits[2].ypred, color=:black, linewidth=2, label="prediction")
+    axislegend(ax2, position=:rt)
+
+    # Col 3: Rates
+    ax3 = Axis(fig[row_idx, 3], xlabel="log2(n)", ylabel="log2(excess risk)", title="$kernel_title - Rates", limits=((2, 10), (-11, 0.5)))
+
+    # Mean over replications, then min over lambdas
+    risk_smooth = [minimum(mean(valtests[:, in_idx, :, 1], dims=2)) for in_idx in 1:length(ns)]
+    risk_nonsmooth = [minimum(mean(valtests[:, in_idx, :, 2], dims=2)) for in_idx in 1:length(ns)]
+
+    x_log = log2.(ns)
+    y_smooth_log = log2.(risk_smooth)
+    y_nonsmooth_log = log2.(risk_nonsmooth)
+
+    lines!(ax3, x_log, y_smooth_log, color=blue, linewidth=2, label="smooth target")
+    lines!(ax3, x_log, y_nonsmooth_log, color=red, linewidth=2, label="non-smooth target")
+
+    a_s, b_s = affine_fit(x_log, y_smooth_log)
+    a_n, b_n = affine_fit(x_log, y_nonsmooth_log)
+
+    lines!(ax3, x_log, a_s .* x_log .+ b_s, color=blue, linestyle=:dash, linewidth=2)
+    lines!(ax3, x_log, a_n .* x_log .+ b_n, color=red, linestyle=:dash, linewidth=2)
+
+    axislegend(ax3, position=:lb)
+end
+
+plot_row!(fig, 1, valtests1, fits1, "Exponential (s=1)")
+plot_row!(fig, 2, valtests2, fits2, "Matern (s=2)")
+plot_row!(fig, 3, valtests4, fits4, "Gaussian")
+
+fig
+```

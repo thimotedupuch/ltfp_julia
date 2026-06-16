@@ -1,0 +1,139 @@
+---
+title : Figure 10.2
+subtitle : Gaussian random projections
+author : Thimoté Dupuch
+date : today
+format:
+  html:
+    embed-resources: true
+    theme:
+      light: zephyr
+      dark: darkly
+engine: julia
+---
+
+```{julia}
+#| echo : false
+#| output : false
+using Pkg; Pkg.activate("../.."); Pkg.status()
+```
+
+```{julia}
+#| output : false
+using CairoMakie, Statistics, Random, LinearAlgebra, SpecialFunctions
+```
+
+```{julia}
+#| output : false
+#| echo : false
+CairoMakie.set_theme!(theme_latexfonts())
+CairoMakie.activate!(type = "svg")
+```
+
+```{julia}
+#| output : false
+blue, orange, green, pink, teal, red, yellow = Makie.wong_colors()
+```
+
+```{julia}
+function feature_matrix(X)
+    n, dx = size(X)
+    d = dx * (dx + 1) ÷ 2 + dx + 1
+    Phi = zeros(n, d)
+    Phi[:, 1] .= 1.0
+    Phi[:, 2:dx+1] = X
+    k = dx + 2
+    for i in 1:dx, j in 1:i
+        Phi[:, k] = X[:, i] .* X[:, j]
+        k += 1
+    end
+    return Phi
+end
+
+function ridge_errors(Phi, y, Phitest, ytest, lambdas, n)
+    train_errs = zeros(length(lambdas))
+    test_errs = zeros(length(lambdas))
+    PhiPhi = Phi' * Phi
+    Phiy = Phi' * y
+    for (i, λ) in enumerate(lambdas)
+        theta = (PhiPhi + n * λ * I) \ Phiy
+        train_errs[i] = mean((Phi * theta .- y).^2)
+        test_errs[i] = mean((Phitest * theta .- ytest).^2)
+    end
+    return train_errs, test_errs
+end
+
+function rp_errors(Phi, y, Phitest, ytest, ms, ss, d)
+    train_errs = zeros(length(ss), length(ms))
+    test_errs = zeros(length(ss), length(ms))
+    PhiPhi = Phi' * Phi
+    Phiy = Phi' * y
+
+    for (imm, m) in enumerate(ms)
+        Ss = [randn(d, maximum(ss)) for _ in 1:m]
+        for (is, s) in enumerate(ss)
+            thetas = zeros(size(Phi, 2), m)
+            for im in 1:m
+                S = Ss[im][:, 1:s]
+                thetas[:, im] = S * ((S' * PhiPhi * S) \ (S' * Phiy))
+            end
+            theta = mean(thetas, dims=2)
+            train_errs[is, imm] = mean((Phi * theta .- y).^2)
+            test_errs[is, imm] = mean((Phitest * theta .- ytest).^2)
+        end
+    end
+    return train_errs, test_errs
+end
+
+function add_line_with_errors!(ax, x, y, err; kwargs...)
+    lines!(ax, x, vec(y); kwargs...)
+    errorbars!(ax, x, vec(y), vec(err), vec(err); color=kwargs[:color], whiskerwidth=10)
+end
+
+# --- Simulation ---
+
+n = 100; ntest = 100; dx = 20; nrep = 100
+d = dx * (dx + 1) ÷ 2 + dx + 1
+std_noise = 2.0
+lambdas = 10.0 .^ (4:-0.5:-8)
+ss = 0:5:100
+ms = [1, 10, 100]
+
+train_err_ridge = zeros(length(lambdas), nrep)
+test_err_ridge = zeros(length(lambdas), nrep)
+train_err_rp = zeros(length(ss), length(ms), nrep)
+test_err_rp = zeros(length(ss), length(ms), nrep)
+
+for irep in 1:nrep
+    X = randn(n, dx)
+    Phi = feature_matrix(X)
+    y = X[:, 1].^2 .+ std_noise * randn(n)
+    ytest = X[:, 1].^2 .+ std_noise * randn(ntest)
+
+    train_err_ridge[:, irep], test_err_ridge[:, irep] = ridge_errors(Phi, y, Phi, ytest, lambdas, n)
+    train_err_rp[:, :, irep], test_err_rp[:, :, irep] = rp_errors(Phi, y, Phi, ytest, ms, ss, d)
+end
+
+# --- Plotting ---
+
+fig = Figure(size=(1200, 900))
+
+ax1 = Axis(fig[1, 1], title="Ridge regression", xlabel="-log(λ)", ylabel="errors")
+x_ridge = -log.(lambdas)
+add_line_with_errors!(ax1, x_ridge, mean(train_err_ridge, dims=2), std(train_err_ridge, dims=2); color=blue, label="train", linewidth=2)
+add_line_with_errors!(ax1, x_ridge, mean(test_err_ridge, dims=2), std(test_err_ridge, dims=2); color=red, label="test", linewidth=2)
+axislegend(ax1, position=:rt)
+ylims!(ax1, 0, 10)
+
+positions = [(1, 2), (2, 1), (2, 2)]
+for (im, m) in enumerate(ms)
+    r, c = positions[im]
+    ax = Axis(fig[r, c], title="Random projections - m=$m", xlabel="s", ylabel="errors")
+    add_line_with_errors!(ax, ss, mean(train_err_rp[:, im, :], dims=2), std(train_err_rp[:, im, :], dims=2); color=blue, label="train", linewidth=2)
+    add_line_with_errors!(ax, ss, mean(test_err_rp[:, im, :], dims=2), std(test_err_rp[:, im, :], dims=2); color=red, label="test", linewidth=2)
+    axislegend(ax, position=:rt)
+    ylims!(ax, 0, 10)
+end
+
+fig
+```
