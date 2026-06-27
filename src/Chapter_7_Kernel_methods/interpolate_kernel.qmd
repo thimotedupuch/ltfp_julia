@@ -37,6 +37,7 @@ blue, orange, green, pink, teal, red, yellow = Makie.wong_colors()
 ```
 
 ```{julia}
+#| output : false
 rng = MersenneTwister(0)
 n = 10
 x = rand(rng, n) .* 2 .- 1

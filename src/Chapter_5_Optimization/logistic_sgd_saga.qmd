@@ -116,7 +116,6 @@ function run_experiment(n_total; seed=1, d=40, number_of_passes=50)
     meanzs = mean(zs, dims=2)[:, 1]
 
     maxiter_saga = number_of_passes * n * 2
-    # SAGA stores values at the same indices but we only monitor up to 4*number_of_passes*n in Matlab
     tostore_saga_set = Set(1:div(n, 10):(number_of_passes * n))
 
     optvalue = 0.0
@@ -155,9 +154,8 @@ end
 ```{julia}
 res_low = run_experiment(2000)
 res_high = run_experiment(20000)
-```
 
-```{julia}
+
 fig = Figure(size=(1200, 900), fontsize=18)
 
 # Row 1: n = 1000

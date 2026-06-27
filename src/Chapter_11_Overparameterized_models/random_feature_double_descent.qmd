@@ -42,7 +42,9 @@ function normalize_rows(X)
     return X ./ sqrt.(sum(X.^2, dims=2))
 end
 
-function run_double_descent_simulation(; seed=1, d=5, ntrain=200, ntest=200, sigma=2.0)
+function run_double_descent_simulation(;
+        seed=1, d=5, ntrain=200, ntest=200, sigma=2.0
+    )
     rng = MersenneTwister(seed)
     w0 = randn(rng, d)
 
@@ -89,15 +91,15 @@ function run_double_descent_simulation(; seed=1, d=5, ntrain=200, ntest=200, sig
         test_errors_lambda[ilambda] = mean((ytest .- Phi_test_max * V).^2)
     end
 
-    return ms, train_errors, test_errors, lambdas, train_errors_lambda, test_errors_lambda, ntrain
+    return ms, train_errors, test_errors, lambdas,
+        train_errors_lambda, test_errors_lambda, ntrain
 end
 ```
 
 ```{julia}
-ms, train_errs, test_errs, lambdas, train_lambda, test_lambda, ntrain = run_double_descent_simulation()
-```
+ms, train_errs, test_errs, lambdas,
+    train_lambda, test_lambda, ntrain = run_double_descent_simulation()
 
-```{julia}
 fig = Figure(size=(1200, 900), fontsize=18)
 
 # Row 1: Underparameterized regime & Ridge regularisation (Figure 11.2)
@@ -107,15 +109,22 @@ lines!(ax1, ms[1:ntrain], train_errs[1:ntrain], color=blue, linewidth=2, label="
 lines!(ax1, ms[1:ntrain], test_errs[1:ntrain], color=red, linewidth=2, label="test")
 axislegend(ax1, position=:lt)
 
-ax2 = Axis(fig[1, 2], xlabel=L"-\log_{10}(\lambda)", ylabel="test error",
-           title="Regularization parameter", limits=((minimum(-log10.(lambdas)), maximum(-log10.(lambdas))), (0, 19.0)))
+ax2 = Axis(
+    fig[1, 2], xlabel=L"-\log_{10}(\lambda)", ylabel="test error",
+    title="Regularization parameter",
+    limits=((minimum(-log10.(lambdas)),
+    maximum(-log10.(lambdas))), (0, 19.0))
+)
 lines!(ax2, -log10.(lambdas), train_lambda, color=blue, linewidth=2, label="train")
 lines!(ax2, -log10.(lambdas), test_lambda, color=red, linewidth=2, label="test")
 axislegend(ax2, position=:lt)
 
 # Row 2: Full Double Descent (Figure 11.3)
-ax3 = Axis(fig[2, :], xlabel="number of random features", ylabel="test error",
-           title="Feature cardinality (full range)", limits=((0, maximum(ms)), (0, 19.0)))
+ax3 = Axis(
+    fig[2, :], xlabel="number of random features", ylabel="test error",
+    title="Feature cardinality (full range)",
+    limits=((0, maximum(ms)), (0, 19.0))
+)
 lines!(ax3, ms, train_errs, color=blue, linewidth=2, label="train")
 lines!(ax3, ms, test_errs, color=red, linewidth=2, label="test")
 axislegend(ax3, position=:rb)
