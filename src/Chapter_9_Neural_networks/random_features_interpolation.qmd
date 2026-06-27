@@ -62,6 +62,7 @@ end
 ```
 
 ```{julia}
+#| output : false
 rng = MersenneTwister(0)
 d = 1
 n = 10

@@ -124,7 +124,11 @@ function run_experiment(n1, n0, d, ts, nrep)
         end
     end
 
-    return vec(mean(err_lda, dims=1)), vec(mean(err_lda_diag, dims=1)), vec(mean(err_logistic, dims=1))
+    return map(
+        x -> vec(mean(x, dims=1)),
+        (err_lda, err_lda_diag, err_logistic)
+    )
+
 end
 
 ts = 0:0.1:1

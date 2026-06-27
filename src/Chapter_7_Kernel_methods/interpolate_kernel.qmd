@@ -74,13 +74,12 @@ yest4 = K4_test * alpha4
 
 ```{julia}
 fig = Figure(size=(800, 600), fontsize=18)
-ax = Axis(fig[1, 1], xlabel="x", ylabel="y", title="Interpolation Comparison", limits=((-1, 1), (-10, 10)))
+ax = Axis(
+    fig[1, 1], xlabel="x", ylabel="y",
+    title="Interpolation Comparison",
+    limits=((-1, 1), (-10, 10))
+)
 
-# In Matlab, colors are:
-# yest2 (Exp s=1) is magenta
-# yest3 (Matern s=2) is black
-# yest4 (Matern s=3) is red
-# yest1 (Gaussian) is blue
 lines!(ax, xtest, yest2, color=pink, linewidth=2, label="Exponential (s=1)")
 lines!(ax, xtest, yest3, color=:black, linewidth=2, label="Matern (s=2)")
 lines!(ax, xtest, yest4, color=red, linewidth=2, label="Matern (s=3)")

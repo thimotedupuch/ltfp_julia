@@ -1,6 +1,5 @@
-
-from pathlib import Path
 import subprocess
+from pathlib import Path
 
 qmd_files = sorted(Path(".").rglob("*.qmd"))
 

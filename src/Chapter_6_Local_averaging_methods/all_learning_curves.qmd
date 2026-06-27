@@ -182,14 +182,13 @@ function run_nadaraya_experiment(; seed=1, n=100, std_noise=0.1, nrep=32)
 end
 ```
 
+
 ```{julia}
-# Run all experiments
+# Run experiments
 Jcards, reg_train, reg_test = run_regressogram_experiment()
 ks, knn_train, knn_test = run_knn_experiment()
 log_hs, nad_train, nad_test = run_nadaraya_experiment()
-```
 
-```{julia}
 fig = Figure(size=(1500, 500), fontsize=18)
 
 # Regressogram plot

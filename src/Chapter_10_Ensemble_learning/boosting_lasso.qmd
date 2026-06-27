@@ -1,7 +1,7 @@
 ---
-title : Figure 10.3
-subtitle : Boosting
-author : Thimoté Dupuch
+title : "Figure 10.3"
+subtitle : "Boosting / Conditional Gradient for Lasso"
+author : "Thimoté Dupuch"
 date : today
 format:
   html:
@@ -15,12 +15,13 @@ engine: julia
 ```{julia}
 #| echo : false
 #| output : false
-using Pkg; Pkg.activate("../.."); Pkg.status()
+using Pkg
+Pkg.activate("../..")
 ```
 
 ```{julia}
 #| output : false
-using CairoMakie, Statistics, Random, LinearAlgebra, SpecialFunctions
+using CairoMakie, Random, Statistics, LinearAlgebra
 ```
 
 ```{julia}
@@ -36,10 +37,12 @@ blue, orange, green, pink, teal, red, yellow = Makie.wong_colors()
 ```
 
 ```{julia}
-function boosting_lasso(X, y, Xtest, ytest, maxiter)
+#| output : false
+function run_boosting_lasso(X, y, Xtest, ytest, maxiter)
     n, d = size(X)
     beta = zeros(d)
     u = zeros(n)
+
     betas = zeros(d, maxiter)
     perftrain = zeros(maxiter)
     perftest = zeros(maxiter)
@@ -51,10 +54,14 @@ function boosting_lasso(X, y, Xtest, ytest, maxiter)
 
         grad = u .- y
         Xtg = X' * grad
-        b = argmax(abs.(Xtg))
+        _, b = findmax(abs.(Xtg))
 
         betaloc = zeros(d)
-        betaloc[b] = X[:, b]' * grad > 0 ? -1.0 : 1.0
+        if dot(X[:, b], grad) > 0
+            betaloc[b] = -1.0
+        else
+            betaloc[b] = 1.0
+        end
 
         uloc = X * betaloc
         alpha = -dot(uloc, grad) / dot(uloc, uloc)
@@ -62,58 +69,75 @@ function boosting_lasso(X, y, Xtest, ytest, maxiter)
         u .+= uloc .* alpha
         beta .+= betaloc .* alpha
     end
+
     return perftrain, perftest, betas
 end
+```
 
-# --- Simulation ---
-
-d, n, ntest, k = 1000, 100, 1000, 5
+```{julia}
+rng = MersenneTwister(1)
+d = 1000
+n = 100
+ntest = 1000
+k = 5
 sigma_noise = 0.5
 maxiter = 50
 
-X = randn(n, d)
-Xtest = randn(ntest, d)
-beta_ast = zeros(d)
-beta_ast[1:k] = sign.(randn(k))
+X = randn(rng, n, d)
+Xtest = randn(rng, ntest, d)
 
-# Sparse case
-y = X * beta_ast .+ sigma_noise * randn(n)
-ytest = Xtest * beta_ast .+ sigma_noise * randn(ntest)
-train_sp, test_sp, betas_sp = boosting_lasso(X, y, Xtest, ytest, maxiter)
+# 1. Sparse Case
+beta_ast_sparse = zeros(d)
+beta_ast_sparse[1:k] = sign.(randn(rng, k))
 
-# Non-sparse case
-temp = randn(d, d)
-U = eigvecs(Symmetric(temp + temp'))
-beta_ast_ns = U * beta_ast
+y_sp = X * beta_ast_sparse + sigma_noise * randn(rng, n)
+ytest_sp = Xtest * beta_ast_sparse + sigma_noise * randn(rng, ntest)
 
-y = X * beta_ast_ns .+ sigma_noise * randn(n)
-ytest = Xtest * beta_ast_ns .+ sigma_noise * randn(ntest)
-train_ns, test_ns, betas_ns = boosting_lasso(X, y, Xtest, ytest, maxiter)
+train_sp, test_sp, betas_sp = run_boosting_lasso(X, y_sp, Xtest, ytest_sp, maxiter)
 
-# --- Plotting ---
+# 2. Non-Sparse Case
+temp = randn(rng, d, d)
+F = eigen(Symmetric(temp + temp'))
+beta_ast_ns = F.vectors * beta_ast_sparse
 
+y_ns = X * beta_ast_ns + sigma_noise * randn(rng, n)
+ytest_ns = Xtest * beta_ast_ns + sigma_noise * randn(rng, ntest)
+
+train_ns, test_ns, betas_ns = run_boosting_lasso(X, y_ns, Xtest, ytest_ns, maxiter)
+```
+
+```{julia}
+fig = Figure(size=(1200, 1000), fontsize=18)
 iters = 0:maxiter-1
-fig = Figure(size=(1200, 1000))
 
-ax1 = Axis(fig[1, 1], title="Errors - sparse", xlabel="iterations", ylabel="log(errors)")
+# Sparse Errors
+ax1 = Axis(fig[1, 1], title="Errors - sparse", xlabel="iterations", ylabel="log(errors)", limits=((0, maxiter-1), (-5.0, 3.0)))
 lines!(ax1, iters, log.(train_sp), color=blue, linewidth=2, label="train")
 lines!(ax1, iters, log.(test_sp), color=red, linewidth=2, label="test")
 axislegend(ax1, position=:rt)
-xlims!(ax1, 0, maxiter-1); ylims!(ax1, -5, 3)
 
-ax2 = Axis(fig[1, 2], title="Weights - sparse", xlabel="iterations", ylabel="weights")
-lines!(ax2, iters, permutedims(betas_sp), linewidth=2) # Transposed to 50x1000
-xlims!(ax2, 0, maxiter-1); ylims!(ax2, -1.2, 1.2)
+# Sparse Weights
+ax2 = Axis(fig[1, 2], title="Weights - sparse", xlabel="iterations", ylabel="weights", limits=((0, maxiter-1), (-1.2, 1.2)))
+for i in 1:d
+    is_active = i <= k
+    if is_active
+        lines!(ax2, iters, betas_sp[i, :], linewidth=2.0)
+    else
+        lines!(ax2, iters, betas_sp[i, :], color=(:black, 0.15), linewidth=1.0)
+    end
+end
 
-ax3 = Axis(fig[2, 1], title="Errors - non sparse", xlabel="iterations", ylabel="log(errors)")
+# Non-Sparse Errors
+ax3 = Axis(fig[2, 1], title="Errors - non sparse", xlabel="iterations", ylabel="log(errors)", limits=((0, maxiter-1), (-5.0, 3.0)))
 lines!(ax3, iters, log.(train_ns), color=blue, linewidth=2, label="train")
 lines!(ax3, iters, log.(test_ns), color=red, linewidth=2, label="test")
 axislegend(ax3, position=:rt)
-xlims!(ax3, 0, maxiter-1); ylims!(ax3, -5, 3)
 
-ax4 = Axis(fig[2, 2], title="Weights - non sparse", xlabel="iterations", ylabel="weights")
-lines!(ax4, iters, permutedims(betas_ns), linewidth=2) # Transposed to 50x1000
-xlims!(ax4, 0, maxiter-1); ylims!(ax4, -1.2, 1.2)
+# Non-Sparse Weights
+ax4 = Axis(fig[2, 2], title="Weights - non sparse", xlabel="iterations", ylabel="weights", limits=((0, maxiter-1), (-1.2, 1.2)))
+for i in 1:d
+    lines!(ax4, iters, betas_ns[i, :], color=(:black, 0.15), linewidth=1.0)
+end
 
 fig
 ```

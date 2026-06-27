@@ -87,7 +87,10 @@ end
 
 function add_line_with_errors!(ax, x, y, err; kwargs...)
     lines!(ax, x, vec(y); kwargs...)
-    errorbars!(ax, x, vec(y), vec(err), vec(err); color=kwargs[:color], whiskerwidth=10)
+    errorbars!(
+        ax, x, vec(y), vec(err), vec(err);
+        color=kwargs[:color], whiskerwidth=10
+    )
 end
 
 # --- Simulation ---
@@ -110,8 +113,13 @@ for irep in 1:nrep
     y = X[:, 1].^2 .+ std_noise * randn(n)
     ytest = X[:, 1].^2 .+ std_noise * randn(ntest)
 
-    train_err_ridge[:, irep], test_err_ridge[:, irep] = ridge_errors(Phi, y, Phi, ytest, lambdas, n)
-    train_err_rp[:, :, irep], test_err_rp[:, :, irep] = rp_errors(Phi, y, Phi, ytest, ms, ss, d)
+    train_err_ridge[:, irep], test_err_ridge[:, irep] = ridge_errors(
+        Phi, y, Phi, ytest, lambdas, n
+    )
+
+    train_err_rp[:, :, irep], test_err_rp[:, :, irep] = rp_errors(
+        Phi, y, Phi, ytest, ms, ss, d
+    )
 end
 
 # --- Plotting ---
@@ -120,8 +128,16 @@ fig = Figure(size=(1200, 900))
 
 ax1 = Axis(fig[1, 1], title="Ridge regression", xlabel="-log(λ)", ylabel="errors")
 x_ridge = -log.(lambdas)
-add_line_with_errors!(ax1, x_ridge, mean(train_err_ridge, dims=2), std(train_err_ridge, dims=2); color=blue, label="train", linewidth=2)
-add_line_with_errors!(ax1, x_ridge, mean(test_err_ridge, dims=2), std(test_err_ridge, dims=2); color=red, label="test", linewidth=2)
+add_line_with_errors!(
+    ax1, x_ridge,
+    mean(train_err_ridge, dims=2), std(train_err_ridge, dims=2);
+    color=blue, label="train", linewidth=2
+)
+add_line_with_errors!(
+    ax1, x_ridge,
+    mean(test_err_ridge, dims=2), std(test_err_ridge, dims=2);
+    color=red, label="test", linewidth=2
+)
 axislegend(ax1, position=:rt)
 ylims!(ax1, 0, 10)
 
@@ -129,8 +145,16 @@ positions = [(1, 2), (2, 1), (2, 2)]
 for (im, m) in enumerate(ms)
     r, c = positions[im]
     ax = Axis(fig[r, c], title="Random projections - m=$m", xlabel="s", ylabel="errors")
-    add_line_with_errors!(ax, ss, mean(train_err_rp[:, im, :], dims=2), std(train_err_rp[:, im, :], dims=2); color=blue, label="train", linewidth=2)
-    add_line_with_errors!(ax, ss, mean(test_err_rp[:, im, :], dims=2), std(test_err_rp[:, im, :], dims=2); color=red, label="test", linewidth=2)
+    add_line_with_errors!(
+        ax, ss,
+        mean(train_err_rp[:, im, :], dims=2), std(train_err_rp[:, im, :], dims=2);
+        color=blue, label="train", linewidth=2
+    )
+    add_line_with_errors!(
+        ax, ss,
+        mean(test_err_rp[:, im, :], dims=2), std(test_err_rp[:, im, :], dims=2);
+        color=red, label="test", linewidth=2
+    )
     axislegend(ax, position=:rt)
     ylims!(ax, 0, 10)
 end

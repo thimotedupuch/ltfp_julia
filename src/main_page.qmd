@@ -29,12 +29,10 @@ engine: julia
 
 
 #### Chapter 2: Introduction to supervised learning
-- [Figure 2.1 (polynomial regression with increasing orders - predictions)](Chapter_2_Introduction_to_supervised_learning/polynomial_regression.html)
-- [Figure 2.2 (polynomial regression with increasing orders - errors)](Chapter_2_Introduction_to_supervised_learning/polynomial_regression.html)
+- [Figure 2.1 & Figure 2.2 (polynomial regression with increasing orders - predictions & errors)](Chapter_2_Introduction_to_supervised_learning/polynomial_regression.html)
 
 #### Chapter 3: Linear least-squares regression
-- [Figure 3.1 (polynomial regression with varying number of observations)](Chapter_3_Linear_least_squares_regression/ols_polynomials_plots.html)
-- [Figure 3.2 (convergence rate for polynomial regression)](Chapter_3_Linear_least_squares_regression/ols_polynomials_rates.html)
+- [Figure 3.1 & Figure 3.2 (polynomial regression with varying number of observations + convergence rate)](Chapter_3_Linear_least_squares_regression/ols_polynomials_plots.html)
 - [Figure 3.3 (polynomial ridge regression)](Chapter_3_Linear_least_squares_regression/ridge_regression.html)
 
 
@@ -77,7 +75,6 @@ engine: julia
 - [Figure 9.3 (neural networks fitting)](Chapter_9_Neural_networks/neural_networks_1d.html)
 
 
-
 #### Chapter 10: Ensemble learning
 - [Figure 10.1 (bagged 1-nn estimation)](Chapter_10_Ensemble_learning/bagging_1nn.html)
 - [Figure 10.2 (Gaussian random projections)](Chapter_10_Ensemble_learning/random_projections.html)
@@ -85,7 +82,7 @@ engine: julia
 
 #### Chapter 11: Overparameterized models
 - [Figure 11.1 (logistic regression on separable data)](Chapter_11_Overparameterized_models/logistic_separable.html)
-- [Figures 11.2 and 11.3 (double descent curves, random non-linear features)](Chapter_11_Overparameterized_models/random_feature_double_descent.html)
+- [Figures 11.2 & Figure 11.3 (double descent curves, random non-linear features)](Chapter_11_Overparameterized_models/random_feature_double_descent.html)
 - [Figure 11.4 (double descent, random linear projections)](Chapter_11_Overparameterized_models/random_projections_double_descent.html)
 
 #### Chapter 12: Lower bounds

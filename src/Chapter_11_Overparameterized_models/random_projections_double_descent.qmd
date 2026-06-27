@@ -46,7 +46,7 @@ function run_random_projections(; seed=0, n=200, d=400, nrep=20, std_noise=0.5)
     temp = temp + temp'
     F = eigen(temp)
     Sigma = F.vectors * Diagonal(1.0 ./ (1:d)) * F.vectors'
-    Sigma = Sigma / trace(Sigma)
+    Sigma /= tr(Sigma)
 
     # Matrix square root
     F_sig = eigen(Sigma)
@@ -107,11 +107,9 @@ function run_random_projections(; seed=0, n=200, d=400, nrep=20, std_noise=0.5)
 end
 ```
 
-```{julia}
-ms, excess_risk, std_total = run_random_projections()
-```
 
 ```{julia}
+ms, excess_risk, std_total = run_random_projections()
 fig = Figure(size=(800, 600), fontsize=18)
 ax = Axis(fig[1, 1], xlabel="m", ylabel="excess risks", title="Double descent for random linear projections", limits=((0, maximum(ms)), (0, 4.0)))
 
